@@ -120,7 +120,7 @@
     -->
     <_SkiaSharpVersion>3.116.1</_SkiaSharpVersion>
     <_SkiaSharpExtendedVersion>3.0.0-preview.13</_SkiaSharpExtendedVersion>
-    <_HarfBuzzSharpVersion>8.3.1</_HarfBuzzSharpVersion>
+    <_HarfBuzzSharpVersion>8.3.0.1</_HarfBuzzSharpVersion>
     <_SkiaSharpNativeAssetsVersion>0.0.0-commit.e57e2a11dac4ccc72bea52939dede49816842005.1728</_SkiaSharpNativeAssetsVersion>
     <MicrosoftTemplateEngineTasksVersion>7.0.120</MicrosoftTemplateEngineTasksVersion>
     <MicrosoftDotNetXHarnessTestRunnersCommonVersion>9.0.0-prerelease.24575.3</MicrosoftDotNetXHarnessTestRunnersCommonVersion>
