@@ -61,6 +61,7 @@ namespace Microsoft.Maui.Resizetizer.Tests
 				tools.Resize(dpiPath, DestinationFilename);
 
 				AssertFileSize(DestinationFilename, exWidth, exHeight);
+				AssertFileMatches(DestinationFilename, new object[] { dpi.ToString("0.#"), fgScale.ToString("0.#"), bg, fg });
 			}
 
 			[Theory]

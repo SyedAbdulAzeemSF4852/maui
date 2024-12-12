@@ -160,6 +160,9 @@ namespace Microsoft.Maui.Resizetizer.Tests
 						data.SaveTo(maskFile);
 					}
 
+					File.Copy(actualFilename, Path.ChangeExtension(maskFilename, ".actual.png"), true);
+					File.Copy(expectedFilename, Path.ChangeExtension(maskFilename, ".expected.png"), true);
+
 					Assert.True(
 						isSimilar,
 						$"Image was not equal. Error was {similarity.ErrorPixelPercentage}% ({similarity.AbsoluteError} pixels). See {maskFilename}");

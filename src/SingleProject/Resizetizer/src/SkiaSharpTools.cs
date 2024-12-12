@@ -92,7 +92,9 @@ namespace Microsoft.Maui.Resizetizer
 				Paint.ColorFilter = SKColorFilter.CreateBlendMode(tint, SKBlendMode.SrcIn);
 			}
 
-			SamplingOptions = new SKSamplingOptions(SKCubicResampler.Mitchell);
+			// Typically the Mitchell cubic resampler is for upsampling
+			// and the bilinear with mipmaps is for downsampling.
+			SamplingOptions = new SKSamplingOptions(SKFilterMode.Linear, SKMipmapMode.Linear);
 		}
 
 		public string Filename { get; }
