@@ -1886,9 +1886,12 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				}
 
 				base.SafeAreaInsetsDidChange();
+#if MACCATALYST
 				AdjustForTitleBar();
+#endif
 			}
 
+#if MACCATALYST
 			void AdjustForTitleBar()
 			{
 				var navController = this.FindResponder<NavigationRenderer>();
@@ -1920,6 +1923,7 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					}
 				}
 			}
+#endif
 		}
 
 		class Container : UIView
