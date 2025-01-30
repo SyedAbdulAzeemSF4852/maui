@@ -14,6 +14,7 @@ namespace Microsoft.Maui.Controls.Platform
 	internal static class ScrollHelpers
 	{
 		static UWPPoint Zero = new UWPPoint(0, 0);
+		static UWPPoint firstItemPosition;
 
 		static bool IsVertical(ScrollViewer scrollViewer)
 		{
@@ -30,6 +31,11 @@ namespace Microsoft.Maui.Controls.Platform
 			return AdjustToMakeVisibleHorizontal(point, itemSize, scrollViewer);
 		}
 
+		static UWPPoint AdjustToStartVertical(UWPPoint point, UWPSize itemSize, ScrollViewer scrollViewer, UWPPoint firstItemPoint)
+		{
+			return new UWPPoint(point.X, point.Y - firstItemPoint.Y);
+		}
+
 		static UWPPoint AdjustToMakeVisibleVertical(UWPPoint point, UWPSize itemSize, ScrollViewer scrollViewer)
 		{
 			if (point.Y > (scrollViewer.VerticalOffset + scrollViewer.ViewportHeight))
@@ -44,6 +50,23 @@ namespace Microsoft.Maui.Controls.Platform
 				return new UWPPoint(scrollViewer.HorizontalOffset, scrollViewer.VerticalOffset);
 			}
 
+			return point;
+		}
+
+		static UWPPoint AdjustToMakeVisibleVertical(UWPPoint point, UWPSize itemSize, ScrollViewer scrollViewer, UWPPoint firstItemPosition)
+		{
+			if (point.Y > (scrollViewer.VerticalOffset + scrollViewer.ViewportHeight))
+			{
+				return AdjustToEndVertical(point, itemSize, scrollViewer);
+			}
+
+			if (point.Y - firstItemPosition.Y >= scrollViewer.VerticalOffset
+				&& point.Y <= (scrollViewer.VerticalOffset + scrollViewer.ViewportHeight - itemSize.Height))
+			{
+				// The target is already in the viewport, no reason to scroll at all
+				return new UWPPoint(scrollViewer.HorizontalOffset, scrollViewer.VerticalOffset);
+			}
+			point.Y -= firstItemPosition.Y;
 			return point;
 		}
 
@@ -284,6 +307,19 @@ namespace Microsoft.Maui.Controls.Platform
 		{
 			var targetContainer = list.ContainerFromItem(targetItem) as UIElement;
 
+			if ((list.IsGrouping) && (firstItemPosition.X == 0 && firstItemPosition.Y == 0))
+			{
+				var item = list.Items[0];
+				var targetContainerSample = list.ContainerFromItem(item) as UIElement;
+				var transformSample = targetContainerSample.TransformToVisual(scrollViewer.Content as UIElement);
+				firstItemPosition = transformSample.TransformPoint(Zero);
+			}
+			else if (!list.IsGrouping)
+			{
+				firstItemPosition.X = 0;
+				firstItemPosition.Y = 0;
+			}
+
 			if (targetContainer != null)
 			{
 				await ScrollToTargetContainerAsync(targetContainer, scrollViewer, scrollToPosition);
@@ -402,9 +438,14 @@ namespace Microsoft.Maui.Controls.Platform
 				case ScrollToPosition.Start:
 					// The transform will put the container at the top of the ScrollViewer; we'll need to adjust for
 					// other scroll positions
+					if ((firstItemPosition.X == 0 && firstItemPosition.Y != 0) && IsVertical(scrollViewer))
+						offset = AdjustToStartVertical(offset, itemSize, scrollViewer, firstItemPosition);
 					break;
 				case ScrollToPosition.MakeVisible:
-					offset = AdjustToMakeVisible(offset, itemSize, scrollViewer);
+					if (firstItemPosition.X == 0 && firstItemPosition.Y != 0 && IsVertical(scrollViewer))
+						offset = AdjustToMakeVisibleVertical(offset, itemSize, scrollViewer, firstItemPosition);
+					else
+						offset = AdjustToMakeVisible(offset, itemSize, scrollViewer);
 					break;
 				case ScrollToPosition.Center:
 					offset = AdjustToCenter(offset, itemSize, scrollViewer);
