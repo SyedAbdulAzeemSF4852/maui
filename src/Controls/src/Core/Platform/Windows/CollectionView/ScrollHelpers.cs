@@ -229,7 +229,7 @@ namespace Microsoft.Maui.Controls.Platform
 
 		public static async Task JumpToItemAsync(ListViewBase list, object targetItem, ScrollToPosition scrollToPosition)
 		{
-			if(!list.IsLoaded)
+			if (!list.IsLoaded)
 			{
 				list.OnLoaded(async () =>
 				{
