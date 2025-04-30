@@ -173,9 +173,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			if (ItemsView != null)
 			{
 				ItemsView.SelectionChanged -= VirtualSelectionChanged;
-				ItemsView.SelectedItem = selectedItem;
-
 				ItemsView.SelectionChanged += VirtualSelectionChanged;
+				ItemsView.SelectedItem = selectedItem;
 			}
 		}
 
