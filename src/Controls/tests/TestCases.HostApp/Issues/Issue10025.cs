@@ -6,10 +6,17 @@ public class Issue10025 : ContentPage
 	CollectionView collectionView;
 	public Issue10025()
 	{
+		Label descriptionLabel = new Label
+		{
+			AutomationId = "DescriptionLabel",
+			Text = "The test passes if the SelectedItem is set to null and no visual selection indicator is displayed; otherwise, it fails",
+			Margin = new Thickness(10),
+		};
+
 		collectionView = new CollectionView
 		{
 			SelectionMode = SelectionMode.Single,
-			ItemsSource = new List<string> { "Item1", "Item2", "Item3", "Item4", "Item5" },
+			ItemsSource = new List<string> { "Item1", "Item2" },
 			ItemTemplate = new DataTemplate(() =>
 			{
 				Label label = new Label();
@@ -23,7 +30,15 @@ public class Issue10025 : ContentPage
 
 		collectionView.SelectionChanged += SelectionChangedEvent;
 
-		Content = collectionView;
+		Content = new VerticalStackLayout
+		{
+			Padding = new Thickness(20),
+			Children =
+			{
+				descriptionLabel,
+				collectionView
+			}
+		};
 	}
 
 	private void SelectionChangedEvent(object sender, SelectionChangedEventArgs e)
