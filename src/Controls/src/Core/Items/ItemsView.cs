@@ -164,6 +164,14 @@ namespace Microsoft.Maui.Controls
 		public void ScrollTo(object item, object group = null,
 			ScrollToPosition position = ScrollToPosition.MakeVisible, bool animate = true)
 		{
+			if (item is null && group is IEnumerable enumerableGroup)
+			{
+				var enumerator = enumerableGroup.GetEnumerator();
+				if (enumerator.MoveNext())
+				{
+					item = enumerator.Current;
+				}
+			}
 			OnScrollToRequested(new ScrollToRequestEventArgs(item, group, position, animate));
 		}
 
