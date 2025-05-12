@@ -164,15 +164,26 @@ namespace Microsoft.Maui.Controls
 		public void ScrollTo(object item, object group = null,
 			ScrollToPosition position = ScrollToPosition.MakeVisible, bool animate = true)
 		{
-			if (item is null && group is IEnumerable enumerableGroup)
+			if (item is null && group is not null)
+			{
+				item = ResolveItemFromGroup(group);
+			}
+
+			OnScrollToRequested(new ScrollToRequestEventArgs(item, group, position, animate));
+		}
+
+		object ResolveItemFromGroup(object group)
+		{
+			if (group is IEnumerable enumerableGroup)
 			{
 				var enumerator = enumerableGroup.GetEnumerator();
 				if (enumerator.MoveNext())
 				{
-					item = enumerator.Current;
+					return enumerator.Current;
 				}
 			}
-			OnScrollToRequested(new ScrollToRequestEventArgs(item, group, position, animate));
+
+			return null;
 		}
 
 		/// <include file="../../../docs/Microsoft.Maui.Controls/ItemsView.xml" path="//Member[@MemberName='SendRemainingItemsThresholdReached']/Docs/*" />
