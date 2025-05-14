@@ -166,10 +166,33 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				_previousPixelHeight = pixelHeight;
 			}
 
+			var width = widthMode == MeasureSpecMode.Unspecified
+				? double.PositiveInfinity
+				: this.FromPixels(pixelWidth);
+
+			var height = heightMode == MeasureSpecMode.Unspecified
+				? double.PositiveInfinity
+				: this.FromPixels(pixelHeight);
+
+			var measure = View.Measure(width, height);
+
 			// If we're using ItemSizingStrategy.MeasureFirstItem and now we have a set size, use that
 			// Even though we already know the size we still need to pass the measure through to the children.
 			if (_pixelSize is not null)
 			{
+				var currentPixelWidth = (int)this.ToPixels(measure.Width);
+				var currentPixelHeight = (int)this.ToPixels(measure.Height);
+
+				if (currentPixelWidth != 0 && _pixelSize.Value.Width == 0)
+				{
+					_pixelSize = new Size(currentPixelWidth, _pixelSize.Value.Height);
+				}
+
+				if (currentPixelHeight != 0 && _pixelSize.Value.Height == 0)
+				{
+					_pixelSize = new Size(_pixelSize.Value.Width, currentPixelHeight);
+				}
+
 				// If the platform childs measure has been invalidated, it's going to still want to
 				// participate in the measure lifecycle in order to update its internal
 				// book keeping.
@@ -181,16 +204,6 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				SetMeasuredDimension((int)_pixelSize.Value.Width, (int)_pixelSize.Value.Height);
 				return;
 			}
-
-			var width = widthMode == MeasureSpecMode.Unspecified
-				? double.PositiveInfinity
-				: this.FromPixels(pixelWidth);
-
-			var height = heightMode == MeasureSpecMode.Unspecified
-				? double.PositiveInfinity
-				: this.FromPixels(pixelHeight);
-
-			var measure = View.Measure(width, height);
 
 			if (pixelWidth == 0)
 			{
