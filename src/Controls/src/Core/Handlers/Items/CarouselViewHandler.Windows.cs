@@ -70,13 +70,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		{
 			var itemsSource = ItemsView?.ItemsSource;
 
-			if (itemsSource == null)
-				return;
-
 			var itemTemplate = ItemsView?.ItemTemplate;
-
-			if (itemTemplate == null)
-				return;
 
 			base.UpdateItemsSource();
 		}
@@ -141,7 +135,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		{
 			args = base.ComputeVisibleIndexes(args, orientation, advancing);
 
-			if (ItemsView.Loop)
+			if (ItemsView.Loop && ItemCount != 0)
 			{
 				args.FirstVisibleItemIndex %= ItemCount;
 				args.CenterItemIndex %= ItemCount;
