@@ -83,6 +83,13 @@ namespace Microsoft.Maui.Graphics.Platform
 				}
 
 				context.Canvas.DrawImage(this, x, y, w, h);
+
+				if (disposeOriginal)
+				{
+					_bitmap.Recycle();
+					_bitmap.Dispose();
+				}
+
 				return context.Image;
 			}
 		}
