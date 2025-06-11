@@ -83,7 +83,11 @@ namespace Microsoft.Maui.Graphics.Platform
 				}
 
 				context.Canvas.DrawImage(this, x, y, w, h);
-				return context.Image;
+
+				var resultBitmap = disposeOriginal ? Bitmap.CreateBitmap(context.Bitmap) : context.Bitmap;
+
+				return new PlatformImage(resultBitmap);
+
 			}
 		}
 
