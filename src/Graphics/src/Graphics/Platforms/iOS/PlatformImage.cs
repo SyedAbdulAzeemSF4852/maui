@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using CoreGraphics;
 using Foundation;
 using UIKit;
 
@@ -28,7 +29,7 @@ namespace Microsoft.Maui.Graphics.Platform
 
 		public IImage Downsize(float maxWidth, float maxHeight, bool disposeOriginal = false)
 		{
-			var scaledImage = _image.ScaleImage(maxWidth, maxHeight, disposeOriginal);
+			var scaledImage = _image.ScaleImage(new CGSize(maxWidth, maxHeight), disposeOriginal);
 			return new PlatformImage(scaledImage);
 		}
 
