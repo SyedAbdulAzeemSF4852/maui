@@ -130,9 +130,19 @@ namespace Microsoft.Maui.Platform
 			}
 		}
 
+		public static void UpdateFlowDirection(this MauiDatePicker platformDatePicker, IDatePicker datePicker)
+		{
+			platformDatePicker.UpdateFlowDirection((IView)datePicker);
+		}
+
 		public static void UpdateTextAlignment(this MauiDatePicker nativeDatePicker, IDatePicker datePicker)
 		{
-			// TODO: Update TextAlignment based on the EffectiveFlowDirection property.
+			var alignment = nativeDatePicker.EffectiveUserInterfaceLayoutDirection ==
+				UIUserInterfaceLayoutDirection.RightToLeft
+				? UITextAlignment.Right
+				: UITextAlignment.Left;
+
+			nativeDatePicker.TextAlignment = alignment;
 		}
 	}
 }
