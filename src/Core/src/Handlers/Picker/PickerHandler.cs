@@ -19,6 +19,10 @@ namespace Microsoft.Maui.Handlers
 #if __ANDROID__ || WINDOWS
 			[nameof(IPicker.Background)] = MapBackground,
 #endif
+			// **** My CHanges *****
+#if __ANDROID__
+			[nameof(IView.IsEnabled)] = MapIsEnabled,
+#endif
 			[nameof(IPicker.CharacterSpacing)] = MapCharacterSpacing,
 			[nameof(IPicker.Font)] = MapFont,
 			[nameof(IPicker.SelectedIndex)] = MapSelectedIndex,
@@ -32,6 +36,10 @@ namespace Microsoft.Maui.Handlers
 
 		public static CommandMapper<IPicker, IPickerHandler> CommandMapper = new(ViewCommandMapper)
 		{
+#if ANDROID
+			[nameof(IPicker.Focus)] = MapFocus,
+			[nameof(IPicker.Unfocus)] = MapUnfocus
+#endif
 		};
 
 		public PickerHandler() : base(Mapper, CommandMapper)

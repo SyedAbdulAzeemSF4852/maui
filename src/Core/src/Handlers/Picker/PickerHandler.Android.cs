@@ -19,7 +19,7 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void ConnectHandler(MauiPicker platformView)
 		{
-			platformView.FocusChange += OnFocusChange;
+
 			platformView.Click += OnClick;
 
 			base.ConnectHandler(platformView);
@@ -27,7 +27,7 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void DisconnectHandler(MauiPicker platformView)
 		{
-			platformView.FocusChange -= OnFocusChange;
+
 			platformView.Click -= OnClick;
 
 			base.DisconnectHandler(platformView);
@@ -86,23 +86,41 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateVerticalAlignment(picker.VerticalTextAlignment);
 		}
 
-		void OnFocusChange(object? sender, global::Android.Views.View.FocusChangeEventArgs e)
+		// **** My CHanges *****
+		public static void MapIsEnabled(IPickerHandler handler, IPicker picker)
 		{
-			if (PlatformView == null)
+			var platformView = handler.PlatformView;
+			if (platformView == null)
 				return;
 
-			if (e.HasFocus)
+			// Set native enabled state
+			platformView.Enabled = picker.IsEnabled;
+
+			// Ensure touch events propagate to parent views when disabled
+			platformView.Clickable = picker.IsEnabled;
+			platformView.Focusable = picker.IsEnabled;
+		}
+
+		internal static void MapFocus(IPickerHandler handler, IPicker picker, object? args)
+		{
+			if (handler.IsConnected())
 			{
-				if (PlatformView.Clickable)
-					PlatformView.CallOnClick();
-				else
-					OnClick(PlatformView, EventArgs.Empty);
+				ViewHandler.MapFocus(handler, picker, args);
+				handler.PlatformView.CallOnClick();
 			}
-			else if (_dialog != null)
+		}
+
+		internal static void MapUnfocus(IPickerHandler handler, IPicker picker, object? args)
+		{
+			if (handler.IsConnected() && handler is PickerHandler pickerHandler)
 			{
-				_dialog.Hide();
-				_dialog = null;
+				pickerHandler.DismissDialog();
+				ViewHandler.MapUnfocus(handler, picker, args);
 			}
+		}
+		void DismissDialog()
+		{
+			_dialog?.Dismiss();
 		}
 
 		void OnClick(object? sender, EventArgs e)
@@ -152,10 +170,9 @@ namespace Microsoft.Maui.Handlers
 
 				_dialog.SetCanceledOnTouchOutside(true);
 
-				_dialog.DismissEvent += (sender, args) =>
-				{
-					_dialog = null;
-				};
+				_dialog.ShowEvent += OnDialogShown;
+
+				_dialog.DismissEvent += OnDialogDismiss;
 
 				_dialog.Show();
 			}
@@ -164,6 +181,29 @@ namespace Microsoft.Maui.Handlers
 		static void Reload(IPickerHandler handler)
 		{
 			handler.PlatformView.UpdatePicker(handler.VirtualView);
+		}
+
+		void OnDialogDismiss(object? sender, EventArgs e)
+		{
+			if (_dialog is null)
+			{
+				return;
+			}
+
+			_dialog.DismissEvent -= OnDialogDismiss;
+			VirtualView.IsFocused = false;
+			_dialog = null;
+		}
+
+		void OnDialogShown(object? sender, EventArgs e)
+		{
+			if (_dialog is null)
+			{
+				return;
+			}
+
+			_dialog.ShowEvent -= OnDialogShown;
+			VirtualView.IsFocused = true;
 		}
 	}
 }
