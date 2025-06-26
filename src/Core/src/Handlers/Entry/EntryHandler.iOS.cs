@@ -179,11 +179,28 @@ namespace Microsoft.Maui.Handlers
 
 			void OnEditingChanged(object? sender, EventArgs e)
 			{
-				if (sender is MauiTextField platformView)
+				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
 				{
-					VirtualView?.UpdateText(platformView.Text);
+					virtualView.UpdateText(platformView.Text);
+
+					// Sync cursor position and selection length after text changes
+					SyncCursorPositionAndSelection(platformView, virtualView);
 				}
 			}
+
+			static void SyncCursorPositionAndSelection(MauiTextField platformView, IEntry virtualView)
+			{
+				var cursorPosition = platformView.GetCursorPosition();
+				var selectedTextLength = platformView.GetSelectedTextLength();
+
+				if (virtualView.CursorPosition != cursorPosition)
+					virtualView.CursorPosition = cursorPosition;
+
+				if (virtualView.SelectionLength != selectedTextLength)
+					virtualView.SelectionLength = selectedTextLength;
+			}
+
+
 
 			void OnEditingEnded(object? sender, EventArgs e)
 			{
@@ -209,14 +226,7 @@ namespace Microsoft.Maui.Handlers
 			{
 				if (sender is MauiTextField platformView && VirtualView is IEntry virtualView)
 				{
-					var cursorPosition = platformView.GetCursorPosition();
-					var selectedTextLength = platformView.GetSelectedTextLength();
-
-					if (virtualView.CursorPosition != cursorPosition)
-						virtualView.CursorPosition = cursorPosition;
-
-					if (virtualView.SelectionLength != selectedTextLength)
-						virtualView.SelectionLength = selectedTextLength;
+					SyncCursorPositionAndSelection(platformView, virtualView);
 				}
 			}
 		}
