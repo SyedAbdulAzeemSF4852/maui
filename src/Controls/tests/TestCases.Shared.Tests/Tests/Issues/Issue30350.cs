@@ -1,3 +1,4 @@
+#if TEST_FAILS_ON_WINDOWS // Issue Link - https://github.com/dotnet/maui/issues/13608
 using NUnit.Framework;
 using UITest.Appium;
 using UITest.Core;
@@ -10,13 +11,14 @@ public class Issue30350 : _IssuesUITest
 	{
 	}
 
-	public override string Issue => "When an image is downsized and drawn in a GraphicsView the resulting image appears upside down";
+	public override string Issue => "When an image is downsized the resulting image appears upside down";
 
 	[Test]
-	[Category(UITestCategories.GraphicsView)]
+	[Category(UITestCategories.Image)]
 	public void VerifyDownsizedImageIsNotFlipped()
 	{
 		App.WaitForElement("Issue30350_DownsizedImageLabel");
 		VerifyScreenshot();
 	}
 }
+#endif
