@@ -73,7 +73,58 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateCharacterSpacing(this ComboBox nativeComboBox, IPicker picker)
 		{
-			nativeComboBox.CharacterSpacing = picker.CharacterSpacing.ToEm();
+			var characterSpacing = picker.CharacterSpacing.ToEm();
+			nativeComboBox.CharacterSpacing = characterSpacing;
+
+			if (nativeComboBox.IsLoaded)
+			{
+				ApplyCharacterSpacingToComboBoxElements(nativeComboBox, characterSpacing);
+			}
+			else
+			{
+				nativeComboBox.OnLoaded(() =>
+				{
+					ApplyCharacterSpacingToComboBoxElements(nativeComboBox, characterSpacing);
+				});
+			}
+		}
+
+		static void ApplyCharacterSpacingToComboBoxElements(ComboBox nativeComboBox, int characterSpacing)
+		{
+			// Apply character spacing to the title/header
+			ApplyCharacterSpacingToTitle(nativeComboBox, characterSpacing);
+
+			// Apply character spacing to the selected item content
+			ApplyCharacterSpacingToSelectedItem(nativeComboBox, characterSpacing);
+		}
+
+		static void ApplyCharacterSpacingToTitle(ComboBox nativeComboBox, int characterSpacing)
+		{
+			// Find the header content presenter and apply character spacing to its TextBlock
+			var headerContentPresenter = nativeComboBox.GetDescendantByName<ContentPresenter>("HeaderContentPresenter");
+			if (headerContentPresenter != null)
+			{
+				var headerTextBlock = headerContentPresenter.GetFirstDescendant<TextBlock>();
+				if (headerTextBlock != null)
+				{
+					headerTextBlock.CharacterSpacing = characterSpacing;
+				}
+			}
+		}
+
+		static void ApplyCharacterSpacingToSelectedItem(ComboBox nativeComboBox, int characterSpacing)
+		{
+			// Find and update the content presenter for selected item
+			var contentPresenter = nativeComboBox.GetDescendantByName<ContentPresenter>("ContentPresenter");
+			if (contentPresenter != null)
+			{
+				// Look for TextBlock in the ContentPresenter
+				var textBlock = contentPresenter.GetFirstDescendant<TextBlock>();
+				if (textBlock != null)
+				{
+					textBlock.CharacterSpacing = characterSpacing;
+				}
+			}
 		}
 
 		public static void UpdateFont(this ComboBox nativeComboBox, IPicker picker, IFontManager fontManager) =>

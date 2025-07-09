@@ -62,12 +62,14 @@ namespace Microsoft.Maui.Handlers
 		public static void MapTitle(IPickerHandler handler, IPicker picker)
 		{
 			handler.PlatformView?.UpdateTitle(picker);
+			handler.PlatformView?.UpdateCharacterSpacing(picker);
 			handler.UpdateValue(nameof(IView.Semantics));
 		}
 
 		public static void MapTitleColor(IPickerHandler handler, IPicker picker)
 		{
 			handler.PlatformView?.UpdateTitle(picker);
+			handler.PlatformView?.UpdateCharacterSpacing(picker);
 		}
 
 		public static void MapBackground(IPickerHandler handler, IPicker picker)
@@ -78,6 +80,7 @@ namespace Microsoft.Maui.Handlers
 		public static void MapSelectedIndex(IPickerHandler handler, IPicker picker)
 		{
 			handler.PlatformView?.UpdateSelectedIndex(picker);
+			handler.PlatformView?.UpdateCharacterSpacing(picker);
 		}
 
 		public static void MapCharacterSpacing(IPickerHandler handler, IPicker picker)
