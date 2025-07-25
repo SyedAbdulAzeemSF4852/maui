@@ -9,7 +9,27 @@ namespace Microsoft.Maui.Handlers
 		protected override RadioButton CreatePlatformView()
 		{
 			// Note: We set a random GUID as the GroupName as part of the work-around in https://github.com/dotnet/maui/issues/11418
-			return new RadioButton() { GroupName = Guid.NewGuid().ToString() };
+			var radioButton = new RadioButton() { GroupName = Guid.NewGuid().ToString() };
+
+			AdjustRadioButtonForCustomTemplate(radioButton);
+
+			return radioButton;
+		}
+
+		static void AdjustRadioButtonForCustomTemplate(RadioButton radioButton)
+		{
+			radioButton.Loaded += OnRadioButtonLoaded;
+
+			static void OnRadioButtonLoaded(object sender, RoutedEventArgs e)
+			{
+				if (sender is not RadioButton radioButton)
+					return;
+
+				radioButton.Loaded -= OnRadioButtonLoaded;
+
+				radioButton.MinWidth = 0;
+				radioButton.MinHeight = 0;
+			}
 		}
 
 		protected override void ConnectHandler(RadioButton platformView)
