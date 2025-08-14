@@ -56,6 +56,10 @@ namespace Microsoft.Maui.Controls
 		{
 			if (Binding != null)
 				bindable.SetBinding(_boundProperty, Binding.Clone());
+
+			object initialValue = bindable.GetValue(_boundProperty);
+			bool initialState = EqualsToValue(initialValue);
+			ConditionChanged?.Invoke(bindable, !initialState, initialState);
 		}
 
 		internal override void TearDown(BindableObject bindable)
