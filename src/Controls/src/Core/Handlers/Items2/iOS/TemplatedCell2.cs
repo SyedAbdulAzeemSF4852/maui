@@ -298,9 +298,48 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 		{
 			if (PlatformHandler?.VirtualView is VisualElement element)
 			{
-				VisualStateManager.GoToState(element, Selected
-					? VisualStateManager.CommonStates.Selected
-					: VisualStateManager.CommonStates.Normal);
+				if (Selected)
+				{
+					VisualStateManager.GoToState(element, VisualStateManager.CommonStates.Selected);
+				}
+				else
+				{
+					// Check if Normal state has setters to reset visual properties
+					if (!HasNormalStateSetters(element))
+					{
+						// Clear common visual properties before transitioning to Normal state
+						ClearCommonVisualProperties(element);
+					}
+					VisualStateManager.GoToState(element, VisualStateManager.CommonStates.Normal);
+				}
+			}
+		}
+
+		static bool HasNormalStateSetters(VisualElement element)
+		{
+			var groups = VisualStateManager.GetVisualStateGroups(element);
+			for (var groupIndex = 0; groupIndex < groups.Count; groupIndex++)
+			{
+				var group = groups[groupIndex];
+				for (var stateIndex = 0; stateIndex < group.States.Count; stateIndex++)
+				{
+					var state = group.States[stateIndex];
+					if (state.Name == VisualStateManager.CommonStates.Normal && state.Setters.Count > 0)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+
+		static void ClearCommonVisualProperties(VisualElement element)
+		{
+			// Clear common visual properties that are typically set in Selected state
+			// Setting to transparent works better than ClearValue() in CollectionView context
+			if (element is ContentView contentView)
+			{
+				contentView.BackgroundColor = Colors.Transparent;
 			}
 		}
 
