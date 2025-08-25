@@ -77,7 +77,7 @@ namespace Microsoft.Maui.Platform
 
 			if (paint.IsNullOrEmpty())
 			{
-				if (platformView is LayoutView)
+					if (platformView is LayoutView || platformView is ContentView)
 					platformView.BackgroundColor = null;
 				else
 					return;
