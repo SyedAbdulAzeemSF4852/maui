@@ -378,6 +378,10 @@ namespace Microsoft.Maui.Platform
 
 			if (paint is GradientPaint gradientPaint)
 			{
+				// Defensive null checks for GradientStops
+				if (gradientPaint.GradientStops == null || gradientPaint.GradientStops.Length == 0)
+					return;
+
 				using (CGColorSpace rgb = CGColorSpace.CreateDeviceRGB())
 				{
 					CGColor[] colors = new CGColor[gradientPaint.GradientStops.Length];
@@ -385,9 +389,13 @@ namespace Microsoft.Maui.Platform
 
 					for (int index = 0; index < gradientPaint.GradientStops.Length; index++)
 					{
-						Graphics.Color color = gradientPaint.GradientStops[index].Color;
+						var stop = gradientPaint.GradientStops[index];
+						if (stop == null || stop.Color == null)
+							return; // Abort drawing if any stop or color is null
+
+						Graphics.Color color = stop.Color;
 						colors[index] = new CGColor(new nfloat(color.Red), new nfloat(color.Green), new nfloat(color.Blue), new nfloat(color.Alpha));
-						locations[index] = new nfloat(gradientPaint.GradientStops[index].Offset);
+						locations[index] = new nfloat(stop.Offset);
 					}
 
 					CGGradient gradient = new CGGradient(rgb, colors, locations);
