@@ -1,3 +1,5 @@
+using System.Collections;
+using System.Collections.Generic;
 using System.ComponentModel;
 using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
@@ -161,7 +163,24 @@ namespace Microsoft.Maui.Controls
 				}
 			});
 
-			BindableLayout.SetItemsSource(this, _indicatorView.ItemsSource);
+			IEnumerable itemsSource = _indicatorView.ItemsSource;
+			int maxVisible = _indicatorView.MaximumVisible;
+			if (itemsSource != null && maxVisible < int.MaxValue)
+			{
+				var limited = new List<object>();
+				int count = 0;
+				foreach (var item in itemsSource)
+				{
+					if (count++ >= maxVisible)
+						break;
+					limited.Add(item);
+				}
+				BindableLayout.SetItemsSource(this, limited);
+			}
+			else
+			{
+				BindableLayout.SetItemsSource(this, itemsSource);
+			}
 			BindableLayout.SetItemTemplate(this, indicatorTemplate);
 		}
 
