@@ -398,6 +398,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 			var position = DetermineTargetPosition(args);
 
+			if (position == -1)
+			{
+				return;
+			}
+
 			if (args.IsAnimated)
 			{
 				ScrollHelper.AnimateScrollToPosition(position, args.ScrollToPosition);
@@ -440,6 +445,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				else if (ItemsViewAdapter.ItemsSource is IGroupableItemsViewSource groupItemSource)
 				{
 					item = FindBoundItemInGroup(args, groupItemSource);
+
+					if (item is null)
+					{
+						return -1;
+					}
 				}
 			}
 
@@ -457,6 +467,10 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				{
 					// GetItem calls AdjustIndexRequest, which subtracts 1 if we have a header (UngroupedItemsSource does not do this)
 					return group.GetItem(args.Index + 1);
+				}
+				else
+				{
+					return null;
 				}
 			}
 			return groupItemSource.GetItem(args.Index);
