@@ -259,6 +259,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				&& currentItemPosition != -1)
 			{
 				carouselPosition = currentItemPosition;
+				UpdateInitialPosition();
 			}
 
 			// Queue the rest up for later after the Adapter has finished processing item change notifications
