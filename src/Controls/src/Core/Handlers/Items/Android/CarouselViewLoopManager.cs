@@ -52,8 +52,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			var currentCarouselPosition = carouselPosition;
 			var itemSourceCount = _itemsSource.Count;
 
-			var diffToStart = currentCarouselPosition + (itemSourceCount - newPosition);
-			var diffToEnd = itemSourceCount - currentCarouselPosition + newPosition;
+			var diffToStart = (currentCarouselPosition - newPosition + itemSourceCount) % itemSourceCount;
+   			var diffToEnd = (newPosition - currentCarouselPosition + itemSourceCount) % itemSourceCount;
+ 
 			var centerView = recyclerView.GetCenteredView();
 
 			if (centerView == null)
