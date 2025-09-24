@@ -10,7 +10,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		RecyclerView _lastRecyclerView;
 		int _lastDx;
 		int _lastDy;
-		
+		bool _isProgrammaticScrolling;
+
 		public CarouselViewOnScrollListener(ItemsView itemsView, ItemsViewAdapter<CarouselView, IItemsViewSource> itemsViewAdapter, CarouselViewLoopManager carouselViewLoopManager) : base((CarouselView)itemsView, itemsViewAdapter, true)
 		{
 			_carouselView = itemsView as CarouselView;
@@ -29,30 +30,40 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					_carouselView.SetIsDragging(false);
 			}
 
-			_carouselView.IsScrolling = state != RecyclerView.ScrollStateIdle;
-			// When scroll animation completes (settling -> idle) and we have cached scroll data, 
-			if (state == RecyclerView.ScrollStateIdle && _carouselView.IsScrollAnimated && _lastRecyclerView != null)
+			// Detect programmatic scrolling
+			if (state == RecyclerView.ScrollStateSettling && !_carouselView.IsDragging)
 			{
-				ProcessScrolled(_lastRecyclerView, _lastDx, _lastDy);
-				_lastRecyclerView = null;
-				_lastDx = 0;
-				_lastDy = 0;
+				_isProgrammaticScrolling = true;
 			}
+			else if (state == RecyclerView.ScrollStateIdle)
+			{
+				// When scroll completes, process any cached programmatic scroll data
+				if (_isProgrammaticScrolling && _lastRecyclerView is not null)
+				{
+					ProcessScrolled(_lastRecyclerView, _lastDx, _lastDy);
+					_lastRecyclerView = null;
+					_lastDx = 0;
+					_lastDy = 0;
+				}
+
+				_isProgrammaticScrolling = false;
+			}
+
+			_carouselView.IsScrolling = state != RecyclerView.ScrollStateIdle;
 		}
 
 		public override void OnScrolled(RecyclerView recyclerView, int dx, int dy)
 		{
-			// Defer scroll processing during animated transitions to prevent erratic property updates.
-			if (_carouselView.IsScrollAnimated && recyclerView.ScrollState == RecyclerView.ScrollStateSettling)
+			if (_isProgrammaticScrolling)
 			{
-				// This prevents multiple rapid CurrentItem changes during the smooth scroll animation
+				// Cache scroll data for programmatic scrolls - will be processed when ScrollStateIdle is reached
 				_lastRecyclerView = recyclerView;
 				_lastDx = dx;
 				_lastDy = dy;
 			}
 			else
 			{
-				// For non-animated scrolls, user dragging, or idle state, process immediately
+				// Process immediately for manual user scrolling and non-animated scenarios
 				ProcessScrolled(recyclerView, dx, dy);
 			}
 		}
@@ -63,6 +74,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			{
 				base.OnScrolled(recyclerView, dx, dy);
 			}
+
 			if (_carouselView.Loop)
 			{
 				//We could have a race condition where we are scrolling our collection to center the first item
