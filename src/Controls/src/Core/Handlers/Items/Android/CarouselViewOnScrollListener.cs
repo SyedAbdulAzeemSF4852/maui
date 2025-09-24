@@ -7,7 +7,10 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 	{
 		readonly CarouselView _carouselView;
 		readonly CarouselViewLoopManager _carouselViewLoopManager;
-
+		RecyclerView _lastRecyclerView;
+		int _lastDx;
+		int _lastDy;
+		
 		public CarouselViewOnScrollListener(ItemsView itemsView, ItemsViewAdapter<CarouselView, IItemsViewSource> itemsViewAdapter, CarouselViewLoopManager carouselViewLoopManager) : base((CarouselView)itemsView, itemsViewAdapter, true)
 		{
 			_carouselView = itemsView as CarouselView;
@@ -27,12 +30,39 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			}
 
 			_carouselView.IsScrolling = state != RecyclerView.ScrollStateIdle;
+			// When scroll animation completes (settling -> idle) and we have cached scroll data, 
+			if (state == RecyclerView.ScrollStateIdle && _carouselView.IsScrollAnimated && _lastRecyclerView != null)
+			{
+				ProcessScrolled(_lastRecyclerView, _lastDx, _lastDy);
+				_lastRecyclerView = null;
+				_lastDx = 0;
+				_lastDy = 0;
+			}
 		}
 
 		public override void OnScrolled(RecyclerView recyclerView, int dx, int dy)
 		{
-			base.OnScrolled(recyclerView, dx, dy);
+			// Defer scroll processing during animated transitions to prevent erratic property updates.
+			if (_carouselView.IsScrollAnimated && recyclerView.ScrollState == RecyclerView.ScrollStateSettling)
+			{
+				// This prevents multiple rapid CurrentItem changes during the smooth scroll animation
+				_lastRecyclerView = recyclerView;
+				_lastDx = dx;
+				_lastDy = dy;
+			}
+			else
+			{
+				// For non-animated scrolls, user dragging, or idle state, process immediately
+				ProcessScrolled(recyclerView, dx, dy);
+			}
+		}
 
+		void ProcessScrolled(RecyclerView recyclerView, int dx, int dy)
+		{
+			if (recyclerView is not null)
+			{
+				base.OnScrolled(recyclerView, dx, dy);
+			}
 			if (_carouselView.Loop)
 			{
 				//We could have a race condition where we are scrolling our collection to center the first item
