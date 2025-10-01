@@ -1641,9 +1641,19 @@ namespace Microsoft.Maui.Controls
 
 		static void OnCurrentItemChanged(BindableObject bindable, object oldValue, object newValue)
 		{
+			var shell = (Shell)bindable;
+
+			// Check if we have modal pages in the navigation stack
+			// If so, let modal navigation manager handle appearing/disappearing events
+			bool hasModalPages = shell.Navigation?.ModalStack?.Count > 0;
+
 			if (oldValue is ShellItem oldShellItem)
 			{
-				oldShellItem.SendDisappearing();
+				// Only send disappearing if no modal pages are present
+				if (!hasModalPages)
+				{
+					oldShellItem.SendDisappearing();
+				}
 
 				foreach (var section in oldShellItem.Items)
 				{
@@ -1658,9 +1668,14 @@ namespace Microsoft.Maui.Controls
 				return;
 
 			if (newValue is ShellItem newShellItem)
-				newShellItem.SendAppearing();
+			{
+				// Only send appearing if no modal pages are present
+				if (!hasModalPages)
+				{
+					newShellItem.SendAppearing();
+				}
+			}
 
-			var shell = (Shell)bindable;
 			UpdateChecked(shell);
 
 			shell.ShellController.AppearanceChanged(shell, false);
