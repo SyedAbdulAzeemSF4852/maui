@@ -21,6 +21,54 @@ namespace Microsoft.Maui.Platform
 			if (OperatingSystem.IsIOSVersionAtLeast(13) || OperatingSystem.IsMacCatalystVersionAtLeast(13, 1))
 				Layer.CornerCurve = CACornerCurve.Continuous; // Available from iOS 13. More info: https://developer.apple.com/documentation/quartzcore/calayercornercurve/3152600-continuous
 		}
+		
+		public override UIView? HitTest(CGPoint point, UIEvent? uievent)
+		{
+			// If this ContentView is invisible or disabled, don't participate in hit testing
+			if (Hidden || !UserInteractionEnabled)
+			{
+				return null;
+			}
+
+			var result = base.HitTest(point, uievent);
+
+			// If the hit result is this ContentView itself (not a child), 
+			// check if we should pass through to allow sibling views to receive touches
+			if (result != null && ReferenceEquals(result, this))
+			{
+				// Check if all children are effectively non-interactive (hidden or input transparent)
+				if (Subviews?.Length > 0)
+				{
+					bool allChildrenNonInteractive = true;
+					
+					foreach (var subview in Subviews)
+					{
+						// If any child is visible and interactive, ContentView should handle the touch
+						if (!subview.Hidden && subview.UserInteractionEnabled)
+						{
+							// For LayoutView (Grid/Layout children), check UserInteractionEnabledOverride
+							// because LayoutView always keeps UserInteractionEnabled = true for children
+							if (subview is LayoutView layoutView && !layoutView.UserInteractionEnabledOverride)
+							{
+								continue; // This child is input transparent
+							}
+							
+							// This child is interactive, so ContentView should not pass through
+							allChildrenNonInteractive = false;
+							break;
+						}
+					}
+					
+					// If all children are non-interactive, pass through to siblings
+					if (allChildrenNonInteractive)
+					{
+						return null;
+					}
+				}
+			}
+
+			return result;
+		}
 
 		public override void LayoutSubviews()
 		{
