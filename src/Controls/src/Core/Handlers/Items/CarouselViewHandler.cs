@@ -17,7 +17,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 #if TIZEN || ANDROID
 			[Controls.CarouselView.ItemsLayoutProperty.PropertyName] = MapItemsLayout,
 #endif
-#if IOS || MACCATALYST
+#if IOS || MACCATALYST || ANDROID
    			[Controls.VisualElement.IsEnabledProperty.PropertyName] = MapIsEnabled,
 #endif
 			[Controls.CarouselView.IsSwipeEnabledProperty.PropertyName] = MapIsSwipeEnabled,

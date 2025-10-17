@@ -69,7 +69,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			}
 		}
 
-		public static void MapIsEnabled(CarouselViewHandler2 handler, CarouselView carouselView)
+		// TODO: Change the modifier to public in .NET 10.
+		internal static void MapIsEnabled(CarouselViewHandler2 handler, CarouselView carouselView)
 		{
 			handler.Controller?.CollectionView?.UpdateIsEnabled(carouselView);
 			ViewHandler.MapIsEnabled(handler, carouselView);
