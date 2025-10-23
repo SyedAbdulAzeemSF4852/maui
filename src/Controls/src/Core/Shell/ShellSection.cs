@@ -997,7 +997,16 @@ namespace Microsoft.Maui.Controls
 			if (this is IShellSectionController sectionController)
 			{
 				CurrentItem?.SendDisappearing();
-				sectionController.PresentedPage?.SendDisappearing();
+				var presentedPage = sectionController.PresentedPage;
+				if (presentedPage is not null)
+				{
+					// Don't send disappearing to a modal page if we're switching ShellItems
+					// The modal belongs to the new ShellItem, not the old one being disappeared
+					if (IsVisibleSection)
+					{
+						presentedPage.SendDisappearing();
+					}
+				}
 			}
 		}
 
