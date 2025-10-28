@@ -158,3 +158,6 @@ virtual Microsoft.Maui.SwipeViewSwipeStarted.EqualityContract.get -> System.Type
 virtual Microsoft.Maui.SwipeViewSwipeStarted.Equals(Microsoft.Maui.SwipeViewSwipeStarted? other) -> bool
 virtual Microsoft.Maui.SwipeViewSwipeStarted.PrintMembers(System.Text.StringBuilder! builder) -> bool
 override Microsoft.Maui.Platform.ContentView.HitTest(CoreGraphics.CGPoint point, UIKit.UIEvent? uievent) -> UIKit.UIView?
+override Microsoft.Maui.Platform.MauiView.HitTest(CoreGraphics.CGPoint point, UIKit.UIEvent? uievent) -> UIKit.UIView?
+override Microsoft.Maui.Platform.MauiView.UserInteractionEnabled.get -> bool
+override Microsoft.Maui.Platform.MauiView.UserInteractionEnabled.set -> void
