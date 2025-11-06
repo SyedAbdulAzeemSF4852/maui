@@ -46,11 +46,19 @@ namespace Microsoft.Maui.Platform
 
 			if (source is IFileImageSource fis)
 			{
-				image = new BitmapIconSource { UriSource = new Uri("ms-appx:///" + fis.File) };
+				image = new BitmapIconSource 
+				{ 
+					UriSource = new Uri("ms-appx:///" + fis.File),
+					ShowAsMonochrome = false  // Preserve original image colors
+				};
 			}
 			else if (source is IUriImageSource uri)
 			{
-				image = new BitmapIconSource { UriSource = uri?.Uri };
+				image = new BitmapIconSource 
+				{ 
+					UriSource = uri?.Uri,
+					ShowAsMonochrome = false  // Preserve original image colors
+				};
 			}
 			else if (source is IFontImageSource fontImageSource)
 			{
