@@ -22,6 +22,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		List<List<Element>> _flyoutGroupings;
 		Action<Element> _selectedCallback;
 		bool _disposed;
+		int _templateVersion = 0;
 		IMauiContext MauiContext => _shellContext.Shell.Handler.MauiContext;
 
 		public ShellFlyoutRecyclerAdapter(IShellContext shellContext, Action<Element> selectedCallback)
@@ -30,6 +31,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			_shellContext = shellContext;
 
 			ShellController.FlyoutItemsChanged += OnFlyoutItemsChanged;
+			ShellController.FlyoutTemplatesChanged += OnFlyoutTemplatesChanged;
 
 			_listItems = GenerateItemList();
 			_selectedCallback = selectedCallback;
@@ -45,18 +47,30 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 		protected virtual DataTemplate DefaultMenuItemTemplate => null;
 
+		void OnFlyoutTemplatesChanged(object sender, EventArgs e)
+		{
+			// Increment template version to invalidate all cached ViewHolders
+			// This forces RecyclerView to create new ViewHolders with updated templates
+			_templateVersion++;
+			NotifyDataSetChanged();
+		}
+
 		public override int GetItemViewType(int position)
 		{
-			return _listItems[position].Index;
+			// Include template version in view type to force ViewHolder recreation when templates change
+			return _listItems[position].Index + (_templateVersion * 10000);
 		}
 
 		DataTemplate GetDataTemplate(int viewTypeId)
 		{
 			AdapterListItem item = null;
 
+			// Extract the original index from the view type (removing template version)
+			int originalIndex = viewTypeId % 10000;
+
 			foreach (var ali in _listItems)
 			{
-				if (viewTypeId == ali.Index)
+				if (originalIndex == ali.Index)
 				{
 					item = ali;
 					break;
@@ -213,7 +227,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 		internal void Disconnect()
 		{
 			if (Shell is IShellController scc)
+			{
 				scc.FlyoutItemsChanged -= OnFlyoutItemsChanged;
+				scc.FlyoutTemplatesChanged -= OnFlyoutTemplatesChanged;
+			}
 
 			_listItems = null;
 			_selectedCallback = null;

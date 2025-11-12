@@ -84,7 +84,21 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				cell.Disconnect(_context.Shell);
 		}
 
+		internal void ClearTemplateCache()
+		{
+			// Force clear cached cells regardless of whether groups have changed
+			// This is needed when templates change but flyout items remain the same
+			if (_cells is not null)
+			{
+				foreach (var cell in _cells.Values)
+				{
+					cell.Disconnect(_context.Shell);
+				}
 
+				_cells.Clear();
+			}
+		}
+		
 		public void ClearCache()
 		{
 			var newGroups = ((IShellController)_context.Shell).GenerateFlyoutGrouping();

@@ -153,7 +153,8 @@ namespace Microsoft.Maui.Controls
 		/// Customizes the appearance of each <see cref = "MenuItem" />.
 		/// </summary>
 		public static readonly BindableProperty MenuItemTemplateProperty =
-			BindableProperty.CreateAttached(nameof(MenuItemTemplate), typeof(DataTemplate), typeof(Shell), null, BindingMode.OneTime);
+			BindableProperty.CreateAttached(nameof(MenuItemTemplate), typeof(DataTemplate), typeof(Shell), null, BindingMode.OneTime,
+				propertyChanged: OnMenuItemTemplateChanged);
 
 		/// <summary>
 		/// Gets the <see cref = "DataTemplate" /> applied to <see cref = "MenuItem" /> objects in the MenuItems collection.
@@ -177,7 +178,8 @@ namespace Microsoft.Maui.Controls
 		///  The <see cref = "DataTemplate" /> applied to each <see cref = "FlyoutItem" /> object managed by Shell.
 		/// </summary>
 		public static readonly BindableProperty ItemTemplateProperty =
-			BindableProperty.CreateAttached(nameof(ItemTemplate), typeof(DataTemplate), typeof(Shell), null, BindingMode.OneTime);
+			BindableProperty.CreateAttached(nameof(ItemTemplate), typeof(DataTemplate), typeof(Shell), null, BindingMode.OneTime,
+				propertyChanged: OnItemTemplateChanged);
 
 		/// <summary>
 		/// Gets the <see cref = "DataTemplate" /> applied to each <see cref = "FlyoutItem" /> object managed by Shell.
@@ -645,6 +647,22 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
+		static void OnItemTemplateChanged(BindableObject bindable, object oldValue, object newValue)
+		{
+			if (bindable is Shell shell)
+			{
+				shell._flyoutTemplatesChanged?.Invoke(shell, EventArgs.Empty);
+			}
+		}
+
+		static void OnMenuItemTemplateChanged(BindableObject bindable, object oldValue, object newValue)
+		{
+			if (bindable is Shell shell)
+			{
+				shell._flyoutTemplatesChanged?.Invoke(shell, EventArgs.Empty);
+			}
+		}
+
 		static readonly BindablePropertyKey CurrentStatePropertyKey =
 			BindableProperty.CreateReadOnly(nameof(CurrentState), typeof(ShellNavigationState), typeof(Shell), null);
 
@@ -698,6 +716,14 @@ namespace Microsoft.Maui.Controls
 		{
 			add { _flyoutManager.FlyoutItemsChanged += value; }
 			remove { _flyoutManager.FlyoutItemsChanged -= value; }
+		}
+
+		event EventHandler _flyoutTemplatesChanged;
+
+		event EventHandler IShellController.FlyoutTemplatesChanged
+		{
+			add { _flyoutTemplatesChanged += value; }
+			remove { _flyoutTemplatesChanged -= value; }
 		}
 
 		View IShellController.FlyoutHeader => FlyoutHeaderView;

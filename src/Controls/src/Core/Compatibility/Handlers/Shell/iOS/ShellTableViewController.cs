@@ -31,6 +31,7 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			_source = CreateShellTableViewSource();
 
 			ShellController.FlyoutItemsChanged += OnFlyoutItemsChanged;
+			ShellController.FlyoutTemplatesChanged += OnFlyoutTemplatesChanged;
 			_source.ScrolledEvent += OnScrolled;
 		}
 
@@ -69,6 +70,15 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			TableView.ReloadData();
 #pragma warning restore CS0618 // Type or member is obsolete
 			ShellFlyoutContentManager.UpdateVerticalScrollMode();
+		}
+
+		void OnFlyoutTemplatesChanged(object sender, EventArgs e)
+		{
+			// When templates change, we need to clear the cached cells and reload
+			_source.ClearTemplateCache();
+#pragma warning disable CS0618 // Type or member is obsolete
+			TableView.ReloadData();
+#pragma warning restore CS0618 // Type or member is obsolete
 		}
 
 		public void LayoutParallax() =>
@@ -114,7 +124,10 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			if (disposing)
 			{
 				if (ShellController != null)
+				{
 					ShellController.FlyoutItemsChanged -= OnFlyoutItemsChanged;
+					ShellController.FlyoutTemplatesChanged -= OnFlyoutTemplatesChanged;
+				}
 
 				if (_source != null)
 					_source.ScrolledEvent -= OnScrolled;

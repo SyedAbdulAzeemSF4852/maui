@@ -21,6 +21,7 @@ namespace Microsoft.Maui.Controls
 	{
 		event EventHandler StructureChanged;
 		event EventHandler FlyoutItemsChanged;
+		event EventHandler FlyoutTemplatesChanged;
 
 		View FlyoutHeader { get; }
 
