@@ -157,6 +157,14 @@ namespace Microsoft.Maui.Controls.Platform
 				SelectedItem = null;
 		}
 
+		internal void OnFlyoutTemplatesChanged(object sender, EventArgs e)
+		{
+			// Force WinUI to re-evaluate templates When templates change, recreate the template selector and refresh items by temporarily clearing and restoring items source
+			var items = MenuItemsSource;
+			MenuItemsSource = null;
+			MenuItemsSource = items;
+		}
+
 		IEnumerable<object> IterateItems(List<List<Element>> groups)
 		{
 			int separatorNumber = 0;

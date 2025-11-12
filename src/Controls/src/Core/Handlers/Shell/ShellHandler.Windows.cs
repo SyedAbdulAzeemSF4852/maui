@@ -36,6 +36,11 @@ namespace Microsoft.Maui.Controls.Handlers
 			platformView.PaneOpening += OnPaneOpening;
 			platformView.PaneClosing += OnPaneClosing;
 			platformView.ItemInvoked += OnMenuItemInvoked;
+
+			if (platformView.Element is IShellController shellController)
+			{
+				shellController.FlyoutTemplatesChanged += platformView.OnFlyoutTemplatesChanged;
+			}
 		}
 
 		private void OnLoaded(object sender, UI.Xaml.RoutedEventArgs e)
@@ -57,6 +62,11 @@ namespace Microsoft.Maui.Controls.Handlers
 			platformView.PaneOpening -= OnPaneOpening;
 			platformView.PaneClosing -= OnPaneClosing;
 			platformView.ItemInvoked -= OnMenuItemInvoked;
+
+			if (platformView.Element is IShellController shellController)
+			{
+				shellController.FlyoutTemplatesChanged -= platformView.OnFlyoutTemplatesChanged;
+			}
 		}
 
 		void OnMenuItemInvoked(Microsoft.UI.Xaml.Controls.NavigationView sender, Microsoft.UI.Xaml.Controls.NavigationViewItemInvokedEventArgs args)
