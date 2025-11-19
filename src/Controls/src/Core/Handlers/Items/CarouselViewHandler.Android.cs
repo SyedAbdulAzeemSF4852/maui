@@ -30,17 +30,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public static void MapIsSwipeEnabled(CarouselViewHandler handler, CarouselView carouselView)
 		{
-			(handler.PlatformView as IMauiCarouselRecyclerView).IsSwipeEnabled = carouselView.IsEnabled && carouselView.IsSwipeEnabled;
-		}
-
-		// TODO: Change the modifier to public in .NET 11.
-		internal static void MapIsEnabled(CarouselViewHandler handler, CarouselView carouselView)
-		{
-			// Update swipe behavior when IsEnabled changes
-			MapIsSwipeEnabled(handler, carouselView);
-
-			// Call the base handler to update the platform view's Enabled property
-			ViewHandler.MapIsEnabled(handler, carouselView);
+			(handler.PlatformView as IMauiCarouselRecyclerView).IsSwipeEnabled = carouselView.IsSwipeEnabled;
 		}
 
 		public static void MapIsBounceEnabled(CarouselViewHandler handler, CarouselView carouselView)
