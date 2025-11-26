@@ -188,7 +188,12 @@ namespace Microsoft.Maui.Controls
 		void OnTabbedPageDisappearing(object? sender, EventArgs e)
 		{
 			if (_navigationView != null)
+			{
 				_navigationView.PaneDisplayMode = NavigationViewPaneDisplayMode.LeftMinimal;
+
+				// Clear selection to prevent multiple tabs appearing selected when NavigationView is reused
+				_navigationView.SelectedItem = null;
+			}
 		}
 
 		void OnApplyTemplateFinished(object? sender, EventArgs e)
