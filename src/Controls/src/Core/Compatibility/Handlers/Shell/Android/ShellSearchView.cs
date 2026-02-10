@@ -12,6 +12,8 @@ using Android.Widget;
 using AndroidX.AppCompat.Widget;
 using AndroidX.CardView.Widget;
 using AndroidX.Core.Content;
+using Google.Android.Material.Card;
+using Google.Android.Material.TextField;
 using Java.Lang;
 using AColor = Android.Graphics.Color;
 using AImageButton = Android.Widget.ImageButton;
@@ -171,7 +173,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 
 			LP lp;
 			var context = Context;
-			_cardView = new CardView(context);
+			_cardView = RuntimeFeature.IsMaterial3Enabled
+				? new MaterialCardView(MauiMaterialContextThemeWrapper.Create(context))
+				: new CardView(context);
 			using (lp = new LayoutParams(LP.MatchParent, LP.MatchParent))
 				_cardView.LayoutParameters = lp;
 
@@ -191,13 +195,13 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 				Gravity = GravityFlags.Fill,
 				Weight = 1
 			};
-			_textBlock = new AppCompatAutoCompleteTextView(context)
-			{
-				LayoutParameters = lp,
-				Text = query,
-				Hint = placeholder,
-				ImeOptions = ImeAction.Done
-			};
+			_textBlock = RuntimeFeature.IsMaterial3Enabled
+				? new MaterialAutoCompleteTextView(MauiMaterialContextThemeWrapper.Create(context))
+				: new AppCompatAutoCompleteTextView(context);
+			_textBlock.LayoutParameters = lp;
+			_textBlock.Text = query;
+			_textBlock.Hint = placeholder;
+			_textBlock.ImeOptions = ImeAction.Done;
 			lp.Dispose();
 			_textBlock.Enabled = searchHandler.IsSearchEnabled;
 			_textBlock.SetBackground(null);
@@ -290,7 +294,9 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			var measureWidth = GetSize(widthMeasureSpec);
 			var measureHeight = GetSize(heightMeasureSpec);
 
-			SetMeasuredDimension(measureWidth, (int)Context.ToPixels(35));
+			// M3: Use 56dp (standard M3 search bar height), M2: Use 35dp
+			var height = RuntimeFeature.IsMaterial3Enabled ? 56 : 35;
+			SetMeasuredDimension(measureWidth, (int)Context.ToPixels(height));
 		}
 
 		int GetSize(int measureSpec)
