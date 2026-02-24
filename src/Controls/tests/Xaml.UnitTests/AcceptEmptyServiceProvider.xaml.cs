@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests
 {
@@ -20,7 +20,6 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 		}
 	}
 
-	[XamlProcessing(XamlInflator.Default, true)]
 	public partial class AcceptEmptyServiceProvider : ContentPage
 	{
 		public AcceptEmptyServiceProvider()
@@ -30,14 +29,15 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 
 		public IServiceProvider ServiceProvider { get; set; }
 
-		[TestFixture]
-		class Tests
+		[Collection("Xaml Inflation")]
+		public class Tests
 		{
-			[Test]
-			public void ServiceProviderIsNullOnAttributedExtensions([Values] XamlInflator inflator)
+			[Theory]
+			[XamlInflatorData]
+			internal void ServiceProviderIsNullOnAttributedExtensions(XamlInflator inflator)
 			{
 				var p = new AcceptEmptyServiceProvider(inflator);
-				Assert.IsNull(p.ServiceProvider);
+				Assert.Null(p.ServiceProvider);
 			}
 		}
 	}

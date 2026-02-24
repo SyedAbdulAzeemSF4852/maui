@@ -1,7 +1,7 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 using System.Collections.Generic;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -11,22 +11,22 @@ public class Gh8936VM
 	public Dict Data { get; set; } = new Dict { { "Key", "Value" } };
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh8936 : ContentPage
 {
 	public Gh8936() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void IndexerBindingOnSubclasses([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void IndexerBindingOnSubclasses(XamlInflator inflator)
 		{
 			var layout = new Gh8936(inflator) { BindingContext = new Gh8936VM() };
-			Assert.That(layout.entry0.Text, Is.EqualTo("Value"));
+			Assert.Equal("Value", layout.entry0.Text);
 			layout.entry0.Text = "Bar";
-			Assert.That(layout.entry0.Text, Is.EqualTo("Bar"));
-			Assert.That(((Gh8936VM)layout.BindingContext).Data["Key"], Is.EqualTo("Bar"));
+			Assert.Equal("Bar", layout.entry0.Text);
+			Assert.Equal("Bar", ((Gh8936VM)layout.BindingContext).Data["Key"]);
 		}
 	}
 }

@@ -36,6 +36,13 @@ namespace Microsoft.Maui.Platform
 		double _lastMeasureWidth = double.NaN;
 
 		/// <summary>
+		/// Cached measured cross-platform size from the last measure operation tight to <see cref="_lastMeasureWidth"/> and <see cref="_lastMeasureHeight"/>.
+		/// Used to avoid redundant measure calls when constraints haven't changed.
+		/// NaN indicates no previous measure has been performed.
+		/// </summary>
+		Size? _lastMeasuredSize;
+
+		/// <summary>
 		/// Current safe area padding values (top, left, bottom, right) in device-independent units.
 		/// These values represent the insets needed to avoid system UI elements like status bars,
 		/// navigation bars, and home indicators.
@@ -60,7 +67,7 @@ namespace Microsoft.Maui.Platform
 		// True if the view is an ISafeAreaView, does not ignore safe area, and is not inside a UIScrollView;
 		// otherwise, false. Null means not yet determined.
 		bool? _scrollViewDescendant;
-		
+
 		// Keyboard tracking
 		CGRect _keyboardFrame = CGRect.Empty;
 		bool _isKeyboardShowing;
@@ -126,26 +133,39 @@ namespace Microsoft.Maui.Platform
 			{
 				return safeAreaPage.GetSafeAreaRegionsForEdge(edge);
 			}
-			
+
 			// Fallback to legacy ISafeAreaView behavior
 			if (View is ISafeAreaView sav)
 			{
 				return sav.IgnoreSafeArea ? SafeAreaRegions.None : SafeAreaRegions.Container;
 			}
-			
+
 			return SafeAreaRegions.None;
 		}
 
-		static double GetSafeAreaForEdge(SafeAreaRegions safeAreaRegion, double originalSafeArea)
+		// Note: This method was changed from static to instance to access _isKeyboardShowing field
+		// which is needed to determine if SoftInput padding should be applied
+		double GetSafeAreaForEdge(double originalSafeArea, int edge)
 		{
+			var safeAreaRegion = GetSafeAreaRegionForEdge(edge);
+
 			// Edge-to-edge content - no safe area padding
 			if (safeAreaRegion == SafeAreaRegions.None)
 				return 0;
-			
+
+			// Handle SoftInput specifically - only apply padding when keyboard is actually showing
+			if (edge == 3 && SafeAreaEdges.IsOnlySoftInput(safeAreaRegion))
+			{
+				// SoftInput only applies padding when keyboard is showing
+				// When keyboard is hidden, return 0 to avoid showing home indicator padding
+				if (!_isKeyboardShowing)
+					return 0;
+			}
+
 			// All other regions respect safe area in some form
 			// This includes:
 			// - Default: Platform default behavior
-			// - All: Obey all safe area insets  
+			// - All: Obey all safe area insets
 			// - SoftInput: Always pad for keyboard/soft input
 			// - Container: Content flows under keyboard but stays out of bars/notch
 			// - Any combination of the above flags
@@ -167,7 +187,7 @@ namespace Microsoft.Maui.Platform
 			{
 				KeyboardAutoManagerScroll.ShouldScrollAgain = true;
 			}
-			
+
 			ValidateSafeArea();
 			return _safeArea.InsetRect(bounds);
 		}
@@ -215,7 +235,7 @@ namespace Microsoft.Maui.Platform
 				NSNotificationCenter.DefaultCenter.RemoveObserver(showObserver);
 				_keyboardWillShowObserver = null;
 			}
-			
+
 			if (_keyboardWillHideObserver?.TryGetTarget(out var hideObserver) == true)
 			{
 				NSNotificationCenter.DefaultCenter.RemoveObserver(hideObserver);
@@ -267,7 +287,7 @@ namespace Microsoft.Maui.Platform
 			}
 			return null;
 		}
-		
+
 		SafeAreaPadding GetAdjustedSafeAreaInsets()
 		{
 			var baseSafeArea = SafeAreaInsets.ToSafeAreaInsets();
@@ -292,26 +312,33 @@ namespace Microsoft.Maui.Platform
 				{
 					// Get the keyboard frame and calculate its intersection with the current window
 					var window = this.Window;
-					
+
 					if (window != null && !_keyboardFrame.IsEmpty)
 					{
 						var windowFrame = window.Frame;
 						var keyboardIntersection = CGRect.Intersect(_keyboardFrame, windowFrame);
-						
+
 						// If keyboard is visible and intersects with window
 						if (!keyboardIntersection.IsEmpty)
 						{
-							// Calculate keyboard height in the window's coordinate system
-							var keyboardHeight = keyboardIntersection.Height;
-							
-							// For SafeAreaRegions.SoftInput: Always pad so content doesn't go under the keyboard
-							
-							// Bottom edge is most commonly affected by keyboard
 							var bottomEdgeRegion = safeAreaPage.GetSafeAreaRegionsForEdge(3); // 3 = bottom edge
-							if (SafeAreaEdges.IsSoftInput(bottomEdgeRegion))
+
+							// For SafeAreaRegions.SoftInput: Always pad so content doesn't go under the keyboard
+							// Bottom edge is most commonly affected by keyboard
+							if (SafeAreaEdges.IsSoftInput(bottomEdgeRegion) && !IsSoftInputHandledByParent(this))
 							{
 								// Use the larger of the current bottom safe area or the keyboard height
-								var adjustedBottom = Math.Max(baseSafeArea.Bottom, keyboardHeight);
+								// Get the input control's bottom Y in window coordinates
+								var inputBottomY = 0.0;
+								if (Window is not null)
+								{
+									var viewFrameInWindow = this.Superview?.ConvertRectToView(this.Frame, Window) ?? this.Frame;
+									inputBottomY = viewFrameInWindow.Y + viewFrameInWindow.Height;
+								}
+								var keyboardTopY = _keyboardFrame.Y;
+								var overlap = inputBottomY > keyboardTopY ? (inputBottomY - keyboardTopY) : 0.0;
+
+								var adjustedBottom = (overlap > 0) ? overlap : baseSafeArea.Bottom;
 								baseSafeArea = new SafeAreaPadding(baseSafeArea.Left, baseSafeArea.Right, baseSafeArea.Top, adjustedBottom);
 							}
 						}
@@ -322,22 +349,38 @@ namespace Microsoft.Maui.Platform
 			if (View is ISafeAreaView2)
 			{
 				// Apply safe area selectively per edge based on SafeAreaRegions
-				var left = GetSafeAreaForEdge(GetSafeAreaRegionForEdge(0), baseSafeArea.Left);
-				var top = GetSafeAreaForEdge(GetSafeAreaRegionForEdge(1), baseSafeArea.Top);
-				var right = GetSafeAreaForEdge(GetSafeAreaRegionForEdge(2), baseSafeArea.Right);
-				var bottom = GetSafeAreaForEdge(GetSafeAreaRegionForEdge(3), baseSafeArea.Bottom);
+				var left = GetSafeAreaForEdge(baseSafeArea.Left, 0);
+				var top = GetSafeAreaForEdge(baseSafeArea.Top, 1);
+				var right = GetSafeAreaForEdge(baseSafeArea.Right, 2);
+				var bottom = GetSafeAreaForEdge(baseSafeArea.Bottom, 3);
 
 				return new SafeAreaPadding(left, right, top, bottom);
 			}
 
-			// Fallback to legacy behavior
-			if (View is ISafeAreaView sav && sav.IgnoreSafeArea)
+			// Fallback to legacy ISafeAreaView behavior
+			if (View is ISafeAreaView sav)
 			{
-				return SafeAreaPadding.Empty;
+				return sav.IgnoreSafeArea ? SafeAreaPadding.Empty : baseSafeArea;
 			}
 
-			return baseSafeArea;
+			// Non-safe-area views pass through to parent
+			return SafeAreaPadding.Empty;
 		}
+
+		/// <summary>
+		/// Checks if any parent view in the hierarchy is a MauiView that implements ISafeAreaView2
+		/// and has SafeAreaEdges.SoftInput set for the bottom edge. This is used to determine if
+		/// keyboard overlap/padding is already being handled by an ancestor, so the current view
+		/// should not apply additional adjustments.
+		/// Returns true if a parent is handling soft input, false otherwise.
+		/// </summary>
+		internal static bool IsSoftInputHandledByParent(UIView view)
+		{
+			return view.FindParent(x => x is MauiView mv
+				&& mv.View is ISafeAreaView2 safeAreaView2
+				&& SafeAreaEdges.IsSoftInput(safeAreaView2.GetSafeAreaRegionsForEdge(3))) is not null;
+		}
+
 
 		/// <summary>
 		/// Checks if the current measure information is still valid for the given constraints.
@@ -348,15 +391,34 @@ namespace Microsoft.Maui.Platform
 		/// <returns>True if the cached measure is still valid, false otherwise</returns>
 		protected bool IsMeasureValid(double widthConstraint, double heightConstraint)
 		{
-			return !HasFixedConstraints
-				&& widthConstraint == _lastMeasureWidth
+			return widthConstraint == _lastMeasureWidth
 				&& heightConstraint == _lastMeasureHeight;
 		}
 
+		/// <summary>
+		/// Caches the measure constraints and the resulting measured size from the last measure operation.
+		/// </summary>
+		/// <param name="widthConstraint">The width constraint used.</param>
+		/// <param name="heightConstraint">The height constraint used.</param>
+		[Obsolete("Use CacheMeasureConstraints(double widthConstraint, double heightConstraint, Size measuredSize) instead.")]
 		protected void CacheMeasureConstraints(double widthConstraint, double heightConstraint)
 		{
 			_lastMeasureWidth = widthConstraint;
 			_lastMeasureHeight = heightConstraint;
+			_lastMeasuredSize = null;
+		}
+
+		/// <summary>
+		/// Caches the measure constraints and the resulting measured size from the last measure operation.
+		/// </summary>
+		/// <param name="widthConstraint">The width constraint used.</param>
+		/// <param name="heightConstraint">The height constraint used.</param>
+		/// <param name="measuredSize">The resulting measured cross-platform size.</param>
+		protected void CacheMeasureConstraints(double widthConstraint, double heightConstraint, Size measuredSize)
+		{
+			_lastMeasureWidth = widthConstraint;
+			_lastMeasureHeight = heightConstraint;
+			_lastMeasuredSize = measuredSize;
 		}
 
 		/// <summary>
@@ -366,7 +428,7 @@ namespace Microsoft.Maui.Platform
 		/// <returns>True if the view has been measured, false otherwise</returns>
 		bool HasBeenMeasured()
 		{
-			return !double.IsNaN(_lastMeasureWidth) && !double.IsNaN(_lastMeasureHeight);
+			return _lastMeasuredSize.HasValue;
 		}
 
 		/// <summary>
@@ -378,6 +440,7 @@ namespace Microsoft.Maui.Platform
 		{
 			_lastMeasureWidth = double.NaN;
 			_lastMeasureHeight = double.NaN;
+			_lastMeasuredSize = null;
 		}
 
 		public ICrossPlatformLayout? CrossPlatformLayout
@@ -446,9 +509,14 @@ namespace Microsoft.Maui.Platform
 			var widthConstraint = (double)size.Width;
 			var heightConstraint = (double)size.Height;
 
-			var crossPlatformSize = CrossPlatformMeasure(widthConstraint, heightConstraint);
+			if (IsMeasureValid(widthConstraint, heightConstraint) && _lastMeasuredSize is { } crossPlatformSize)
+			{
+				return crossPlatformSize.ToCGSize();
+			}
 
-			CacheMeasureConstraints(widthConstraint, heightConstraint);
+			crossPlatformSize = CrossPlatformMeasure(widthConstraint, heightConstraint);
+
+			CacheMeasureConstraints(widthConstraint, heightConstraint, crossPlatformSize);
 
 			return crossPlatformSize.ToCGSize();
 		}
@@ -499,11 +567,16 @@ namespace Microsoft.Maui.Platform
 			// imposed by the parent (i.e. scroll view) with the current bounds, except when our bounds are fixed by constraints.
 			// But we _do_ need LayoutSubviews to make a measurement pass if the parent is something else (for example,
 			// the window); there's no guarantee that SizeThatFits has been called in that case.
-			if (!IsMeasureValid(widthConstraint, heightConstraint) && !this.IsFinalMeasureHandledBySuperView() ||
-				!HasBeenMeasured() && HasFixedConstraints)
+			var needsMeasure = HasFixedConstraints switch
 			{
-				CrossPlatformMeasure(widthConstraint, heightConstraint);
-				CacheMeasureConstraints(widthConstraint, heightConstraint);
+				true => !HasBeenMeasured() || !this.IsFinalMeasureHandledBySuperView(),
+				false => !IsMeasureValid(widthConstraint, heightConstraint) && !this.IsFinalMeasureHandledBySuperView()
+			};
+
+			if (needsMeasure)
+			{
+				var crossPlatformSize = CrossPlatformMeasure(widthConstraint, heightConstraint);
+				CacheMeasureConstraints(widthConstraint, heightConstraint, crossPlatformSize);
 			}
 
 			CrossPlatformArrange(bounds);
@@ -656,6 +729,33 @@ namespace Microsoft.Maui.Platform
 			}
 
 			UpdateKeyboardSubscription();
+		}
+
+		/// <summary>
+		/// Called when the focus environment updates. This method propagates native iOS focus
+		/// changes to the cross-platform layer by updating the IsFocused property of the
+		/// associated IView when this MauiView gains or loses focus.
+		/// </summary>
+		/// <param name="context">Information about the focus update</param>
+		/// <param name="coordinator">Coordinator for focus animations</param>
+		public override void DidUpdateFocus(UIFocusUpdateContext context, UIFocusAnimationCoordinator coordinator)
+		{
+			base.DidUpdateFocus(context, coordinator);
+
+			if (context.NextFocusedView == this)
+			{
+				if (CrossPlatformLayout is IView view)
+				{
+					view.IsFocused = true;
+				}
+			}
+			else
+			{
+				if (CrossPlatformLayout is IView view)
+				{
+					view.IsFocused = false;
+				}
+			}
 		}
 	}
 }

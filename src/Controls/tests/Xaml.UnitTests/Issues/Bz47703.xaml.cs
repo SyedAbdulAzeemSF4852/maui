@@ -1,6 +1,6 @@
 using System;
 using System.Globalization;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -35,7 +35,6 @@ public class Bz47703View : Label
 	}
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz47703 : ContentPage
 {
 	public Bz47703()
@@ -43,15 +42,16 @@ public partial class Bz47703 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void IValueConverterOnBindings([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void IValueConverterOnBindings(XamlInflator inflator)
 		{
 			var page = new Bz47703(inflator);
 			page.BindingContext = new { Name = "Foo" };
-			Assert.AreEqual("Label:Foo", page.view.Text);
+			Assert.Equal("Label:Foo", page.view.Text);
 		}
 	}
 }

@@ -6,10 +6,11 @@ using System.Diagnostics;
 using Microsoft.Maui.Graphics;
 using Microsoft.Maui.HotReload;
 using Microsoft.Maui.Layouts;
+using Microsoft.Maui.Devices;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../docs/Microsoft.Maui.Controls/ContentPage.xml" path="Type[@FullName='Microsoft.Maui.Controls.ContentPage']/Docs/*" />
+	/// <summary>A <see cref="Page"/> that displays a single view as its content.</summary>
 	[ContentProperty("Content")]
 	[DebuggerDisplay("{GetDebuggerDisplay(), nq}")]
 	public partial class ContentPage : TemplatedPage, IContentView, HotReload.IHotReloadableView, ISafeAreaElement, ISafeAreaView2
@@ -17,7 +18,7 @@ namespace Microsoft.Maui.Controls
 		/// <summary>Bindable property for <see cref="Content"/>.</summary>
 		public static readonly BindableProperty ContentProperty = BindableProperty.Create(nameof(Content), typeof(View), typeof(ContentPage), null, propertyChanged: TemplateUtilities.OnContentChanged);
 
-		/// <include file="../../docs/Microsoft.Maui.Controls/ContentPage.xml" path="//Member[@MemberName='Content']/Docs/*" />
+		/// <summary>Gets or sets the view that contains the content of the page. This is a bindable property.</summary>
 		public View Content
 		{
 			get { return (View)GetValue(ContentProperty); }
@@ -179,6 +180,9 @@ namespace Microsoft.Maui.Controls
 				return SafeAreaEdges.GetEdge(edge);
 			}
 
+
+#if IOS || MACCATALYST
+
 			// Developer hasn't set SafeAreaEdges, fall back to legacy IgnoreSafeArea behavior
 			var ignoreSafeArea = ((ISafeAreaView)this).IgnoreSafeArea;
 			if (ignoreSafeArea)
@@ -189,6 +193,13 @@ namespace Microsoft.Maui.Controls
 			{
 				return SafeAreaRegions.Container; // If legacy says "don't ignore", return Container
 			}
+
+#else
+
+			// Default to None (edge-to-edge) for consistent behavior across all platforms
+			return SafeAreaRegions.None;
+
+#endif
 		}
 
 		SafeAreaEdges ISafeAreaElement.SafeAreaEdgesDefaultValueCreator()

@@ -20,7 +20,7 @@ static class CodeBehindCodeWriter
 
 	internal static readonly string[] accessModifiers = ["private", "public", "internal", "protected"];
 
-	public static string GenerateXamlCodeBehind(XamlProjectItemForCB? xamlItem, Compilation compilation, Action<Diagnostic>? reportDiagnostic, CancellationToken ct, AssemblyCaches xmlnsCache, IDictionary<XmlType, ITypeSymbol> typeCache)
+	public static string GenerateXamlCodeBehind(XamlProjectItemForCB? xamlItem, Compilation compilation, Action<Diagnostic>? reportDiagnostic, CancellationToken ct, AssemblyAttributes xmlnsCache, IDictionary<XmlType, INamedTypeSymbol> typeCache)
 	{
 		var projItem = xamlItem?.ProjectItem;
 
@@ -33,8 +33,33 @@ static class CodeBehindCodeWriter
 		{
 			if (xamlItem.Exception != null)
 			{
-				var location = projItem!.RelativePath is not null ? Location.Create(projItem.RelativePath, new TextSpan(), new LinePositionSpan()) : null;
-				reportDiagnostic?.Invoke(Diagnostic.Create(Descriptors.XamlParserError, location, xamlItem.Exception.Message));
+				IXmlLineInfo lineInfo;
+				string errorMessage;
+
+				if (xamlItem.Exception is XamlParseException xpe)
+				{
+					lineInfo = xpe.XmlInfo;
+					errorMessage = xpe.UnformattedMessage;
+				}
+				else if (xamlItem.Exception is XmlException xmlEx)
+				{
+					lineInfo = new XmlLineInfo(xmlEx.LineNumber, xmlEx.LinePosition);
+					errorMessage = StripLineInfoFromXmlExceptionMessage(xmlEx.Message);
+				}
+				else if (xamlItem.Exception.InnerException is XmlException innerXmlEx)
+				{
+					lineInfo = new XmlLineInfo(innerXmlEx.LineNumber, innerXmlEx.LinePosition);
+					errorMessage = StripLineInfoFromXmlExceptionMessage(innerXmlEx.Message);
+				}
+				else
+				{
+					// Try to extract line info from message if present
+					lineInfo = ExtractLineInfoFromMessage(xamlItem.Exception.Message);
+					errorMessage = StripLineInfoFromXmlExceptionMessage(xamlItem.Exception.Message);
+				}
+
+				var location = projItem!.RelativePath is not null ? LocationHelpers.LocationCreate(projItem.RelativePath, lineInfo, string.Empty) : null;
+				reportDiagnostic?.Invoke(Diagnostic.Create(Descriptors.XamlParserError, location, errorMessage));
 			}
 			return "";
 		}
@@ -53,9 +78,9 @@ static class CodeBehindCodeWriter
 
 		var hintName = $"{(string.IsNullOrEmpty(Path.GetDirectoryName(projItem!.TargetPath)) ? "" : Path.GetDirectoryName(projItem.TargetPath) + Path.DirectorySeparatorChar)}{Path.GetFileNameWithoutExtension(projItem.TargetPath)}.{projItem.Kind.ToLowerInvariant()}.sg.cs".Replace(Path.DirectorySeparatorChar, '_');
 
-		if (projItem.ManifestResourceName != null && projItem.TargetPath != null)
+		if (projItem.ManifestResourceName != null && projItem.RelativePath != null)
 		{
-			sb.AppendLine($"[assembly: global::Microsoft.Maui.Controls.Xaml.XamlResourceId(\"{projItem.ManifestResourceName}\", \"{projItem.TargetPath.Replace('\\', '/')}\", {(rootType == null ? "null" : "typeof(global::" + rootClrNamespace + "." + rootType + ")")})]");
+			sb.AppendLine($"[assembly: global::Microsoft.Maui.Controls.Xaml.XamlResourceId(\"{projItem.ManifestResourceName}\", \"{projItem.RelativePath.Replace('\\', '/')}\", {(rootType == null ? "null" : "typeof(global::" + rootClrNamespace + "." + rootType + ")")})]");
 		}
 
 		if (XamlResourceIdOnly)
@@ -69,16 +94,25 @@ static class CodeBehindCodeWriter
 		}
 
 		var rootSymbol = compilation.GetTypeByMetadataName($"{rootClrNamespace}.{rootType}");
+		bool alreadyHasXamlCompilationAttribute = rootSymbol?.GetAttributes().Any(a => a.AttributeClass != null && a.AttributeClass.Equals(compilation.GetTypeByMetadataName("Microsoft.Maui.Controls.Xaml.XamlCompilationAttribute")!, SymbolEqualityComparer.Default)) ?? false;
 
-		(var generateInflatorSwitch, var xamlInflators, _) = rootSymbol?.GetXamlProcessing() ?? (false, XamlInflator.Default, false);
+		var generateInflatorSwitch = compilation.AssemblyName == "Microsoft.Maui.Controls.Xaml.UnitTests" && !generateDefaultCtor;
+		var xamlInflators = projItem.Inflator;
+
+		//if there's only the XamlC inflator, prevent non-assigned errors
+		if (xamlInflators == XamlInflator.XamlC)
+			sb.AppendLine("#pragma warning disable CS0649");
 
 		sb.AppendLine($"namespace {rootClrNamespace}");
 		sb.AppendLine("{");
 		sb.AppendLine($"\t[global::Microsoft.Maui.Controls.Xaml.XamlFilePath(\"{projItem.RelativePath?.Replace("\\", "\\\\")}\")]");
-		if (addXamlCompilationAttribute)
-		{
+
+#if !_MAUIXAML_SOURCEGEN_BACKCOMPAT
+		if (addXamlCompilationAttribute && !alreadyHasXamlCompilationAttribute)
 			sb.AppendLine($"\t[global::Microsoft.Maui.Controls.Xaml.XamlCompilation(global::Microsoft.Maui.Controls.Xaml.XamlCompilationOptions.Compile)]");
-		}
+#endif
+		if (!addXamlCompilationAttribute && (xamlInflators & XamlInflator.XamlC) == 0 && !alreadyHasXamlCompilationAttribute)
+			sb.AppendLine($"\t[global::Microsoft.Maui.Controls.Xaml.XamlCompilation(global::Microsoft.Maui.Controls.Xaml.XamlCompilationOptions.Skip)]");
 
 		if (hideFromIntellisense)
 		{
@@ -95,10 +129,7 @@ static class CodeBehindCodeWriter
 		if (generateDefaultCtor)
 		{
 			sb.AppendLine($"\t\t[global::System.CodeDom.Compiler.GeneratedCode(\"Microsoft.Maui.Controls.SourceGen\", \"1.0.0.0\")]");
-			sb.AppendLine($"\t\tpublic {rootType}()");
-			sb.AppendLine("\t\t{");
-			sb.AppendLine(generateInflatorSwitch ? "\t\t\tInitializeComponent(global::Microsoft.Maui.Controls.Xaml.XamlInflator.Default);" : "\t\t\tInitializeComponent();");
-			sb.AppendLine("\t\t}");
+			sb.AppendLine($"\t\tpublic {rootType}() => InitializeComponent();");
 			sb.AppendLine();
 		}
 
@@ -137,33 +168,27 @@ static class CodeBehindCodeWriter
 		// - InitializeComponentXamlC will be used for XamlC
 		// - InitializeComponentSourceGen will be used for SourceGen
 		// - no parameterless InitializeComponent will be generated
-
 		if (!generateInflatorSwitch)
 		{
-			if (xamlInflators == XamlInflator.Default)
-			{
-				if (projItem.Configuration != null && projItem.Configuration.Equals("Release", StringComparison.OrdinalIgnoreCase))
-					InitComp("InitializeComponent", empty: true);
-				else
-					InitComp("InitializeComponent");
-			}
 			if ((xamlInflators & XamlInflator.Runtime) == XamlInflator.Runtime)
 				InitComp("InitializeComponent");
 			else if ((xamlInflators & XamlInflator.XamlC) == XamlInflator.XamlC)
-				InitComp("InitializeComponent", empty: true);
+				InitComp("InitializeComponent");
 			else if ((xamlInflators & XamlInflator.SourceGen) == XamlInflator.SourceGen)
+			{
 				InitComp("InitializeComponent", partialsignature: true);
+				//generate InitCompRuntime for HotReload fallback
+				if (projItem.EnableDiagnostics)
+					InitComp("InitializeComponentRuntime");
+			}
 		}
 		else
 		{
-			if ((xamlInflators & XamlInflator.Runtime) == XamlInflator.Runtime
-				|| xamlInflators == XamlInflator.Default)
+			if ((xamlInflators & XamlInflator.Runtime) == XamlInflator.Runtime || projItem.EnableDiagnostics)
 				InitComp("InitializeComponentRuntime");
-			if ((xamlInflators & XamlInflator.XamlC) == XamlInflator.XamlC
-				|| xamlInflators == XamlInflator.Default)
+			if ((xamlInflators & XamlInflator.XamlC) == XamlInflator.XamlC)
 				InitComp("InitializeComponentXamlC", empty: true);
-			if ((xamlInflators & XamlInflator.SourceGen) == XamlInflator.SourceGen
-				|| xamlInflators == XamlInflator.Default)
+			if ((xamlInflators & XamlInflator.SourceGen) == XamlInflator.SourceGen)
 				InitComp("InitializeComponentSourceGen", partialsignature: true);
 		}
 
@@ -176,10 +201,7 @@ static class CodeBehindCodeWriter
 			{
 				sb.AppendLine($"#if NET5_0_OR_GREATER");
 				foreach ((var fname, _, _) in namedFields)
-				{
-
 					sb.AppendLine($"\t\t[global::System.Diagnostics.CodeAnalysis.MemberNotNullAttribute(nameof({EscapeIdentifier(fname)}))]");
-				}
 
 				sb.AppendLine($"#endif");
 			}
@@ -215,9 +237,7 @@ static class CodeBehindCodeWriter
 
 			if (empty)
 			{
-				sb.AppendLine("#if _MAUIXAML_SG_NULLABLE_ENABLE");
 				sb.AppendLine("#nullable enable");
-				sb.AppendLine("#endif");
 			}
 
 			sb.AppendLine();
@@ -238,36 +258,40 @@ static class CodeBehindCodeWriter
 
 				sb.AppendLine($"#endif");
 			}
-			sb.AppendLine($"\t\tprivate void InitializeComponent() => InitializeComponentRuntime();");
-			sb.AppendLine();
+
+			//this isn't supposed to be used, so the default to the first available inflator
+			if ((xamlInflators & XamlInflator.Runtime) == XamlInflator.Runtime)
+				sb.AppendLine($"\t\tprivate void InitializeComponent() => InitializeComponentRuntime();");
+			else if ((xamlInflators & XamlInflator.SourceGen) == XamlInflator.SourceGen)
+				sb.AppendLine($"\t\tprivate void InitializeComponent() => InitializeComponentSourceGen();");
+			else if ((xamlInflators & XamlInflator.XamlC) == XamlInflator.XamlC)
+				sb.AppendLine($"\t\tprivate void InitializeComponent() => InitializeComponentXamlC();");
+
 
 			sb.AppendLine($"\t\t[global::System.CodeDom.Compiler.GeneratedCode(\"Microsoft.Maui.Controls.SourceGen\", \"1.0.0.0\")]");
 
-			sb.AppendLine($"\t\tpublic {rootType}(global::Microsoft.Maui.Controls.Xaml.XamlInflator inflator)");
+			sb.AppendLine($"\t\tinternal {rootType}(global::Microsoft.Maui.Controls.Xaml.XamlInflator inflator)");
 			sb.AppendLine("\t\t{");
 			sb.AppendLine("\t\t\tswitch (inflator)");
 			sb.AppendLine("\t\t\t{");
-			if (xamlInflators == XamlInflator.Default || (xamlInflators & XamlInflator.Runtime) == XamlInflator.Runtime)
+			if ((xamlInflators & XamlInflator.Runtime) == XamlInflator.Runtime)
 			{
 				sb.AppendLine("\t\t\t\tcase global::Microsoft.Maui.Controls.Xaml.XamlInflator.Runtime:");
 				sb.AppendLine("\t\t\t\t\tInitializeComponentRuntime();");
 				sb.AppendLine("\t\t\t\t\tbreak;");
 			}
-			if (xamlInflators == XamlInflator.Default || (xamlInflators & XamlInflator.XamlC) == XamlInflator.XamlC)
+			if ((xamlInflators & XamlInflator.XamlC) == XamlInflator.XamlC)
 			{
 				sb.AppendLine("\t\t\t\tcase global::Microsoft.Maui.Controls.Xaml.XamlInflator.XamlC:");
 				sb.AppendLine("\t\t\t\t\tInitializeComponentXamlC();");
 				sb.AppendLine("\t\t\t\t\tbreak;");
 			}
-			if (xamlInflators == XamlInflator.Default || (xamlInflators & XamlInflator.SourceGen) == XamlInflator.SourceGen)
+			if ((xamlInflators & XamlInflator.SourceGen) == XamlInflator.SourceGen)
 			{
 				sb.AppendLine("\t\t\t\tcase global::Microsoft.Maui.Controls.Xaml.XamlInflator.SourceGen:");
 				sb.AppendLine("\t\t\t\t\tInitializeComponentSourceGen();");
 				sb.AppendLine("\t\t\t\t\tbreak;");
 			}
-			sb.AppendLine("\t\t\t\tcase global::Microsoft.Maui.Controls.Xaml.XamlInflator.Default:");
-			sb.AppendLine("\t\t\t\t\tInitializeComponent();");
-			sb.AppendLine("\t\t\t\t\tbreak;");
 			sb.AppendLine("\t\t\t\tdefault:");
 			sb.AppendLine("\t\t\t\t\tthrow new global::System.NotSupportedException($\"no code for {inflator} generated. check the [XamlProcessing] attribute.\");");
 			sb.AppendLine("\t\t\t}");
@@ -279,7 +303,7 @@ static class CodeBehindCodeWriter
 		return sb.ToString();
 	}
 
-	public static bool TryParseXaml(XamlProjectItemForCB parseResult, string uid, Compilation compilation, AssemblyCaches xmlnsCache, IDictionary<XmlType, ITypeSymbol> typeCache, CancellationToken cancellationToken, Action<Diagnostic>? reportDiagnostic, out string? accessModifier, out string? rootType, out string? rootClrNamespace, out bool generateDefaultCtor, out bool addXamlCompilationAttribute, out bool hideFromIntellisense, out bool xamlResourceIdOnly, out ITypeSymbol? baseType, out IEnumerable<(string, string, string)>? namedFields)
+	public static bool TryParseXaml(XamlProjectItemForCB parseResult, string uid, Compilation compilation, AssemblyAttributes xmlnsCache, IDictionary<XmlType, INamedTypeSymbol> typeCache, CancellationToken cancellationToken, Action<Diagnostic>? reportDiagnostic, out string? accessModifier, out string? rootType, out string? rootClrNamespace, out bool generateDefaultCtor, out bool addXamlCompilationAttribute, out bool hideFromIntellisense, out bool xamlResourceIdOnly, out INamedTypeSymbol? baseType, out IEnumerable<(string, string, string)>? namedFields)
 	{
 		accessModifier = null;
 		rootType = null;
@@ -301,12 +325,14 @@ static class CodeBehindCodeWriter
 			return false;
 		}
 
+#if _MAUIXAML_SOURCEGEN_BACKCOMPAT
 		// if the following xml processing instruction is present
 		//
 		// <?xaml-comp compile="true" ?>
 		//
 		// we will generate a xaml.g.cs file with the default ctor calling InitializeComponent, and a XamlCompilation attribute
 		var hasXamlCompilationProcessingInstruction = GetXamlCompilationProcessingInstruction(root.OwnerDocument);
+#endif
 
 		var rootClass = root.Attributes["Class", XamlParser.X2006Uri]
 					 ?? root.Attributes["Class", XamlParser.X2009Uri];
@@ -315,8 +341,24 @@ static class CodeBehindCodeWriter
 		{
 			XmlnsHelper.ParseXmlns(rootClass.Value, out rootType, out rootClrNamespace, out _, out _);
 		}
-		else if (hasXamlCompilationProcessingInstruction && root.NamespaceURI == XamlParser.MauiUri)
+#if _MAUIXAML_SOURCEGEN_BACKCOMPAT
+		else if (hasXamlCompilationProcessingInstruction
+				&& (root.NamespaceURI == XamlParser.MauiUri || root.NamespaceURI == XamlParser.MauiGlobalUri))
+#else
+		else if (root.NamespaceURI == XamlParser.MauiUri || root.NamespaceURI == XamlParser.MauiGlobalUri)
+#endif
 		{
+			//make sure the base type can be resolved. if not, don't consider this as xaml, and move away
+			var typeArgs = GetAttributeValue(root, "TypeArguments", XamlParser.X2006Uri, XamlParser.X2009Uri);
+			try
+			{
+				var basetype = new XmlType(root.NamespaceURI, root.LocalName, typeArgs != null ? TypeArgumentsParser.ParseExpression(typeArgs, nsmgr, null) : null).GetTypeSymbol(null, compilation, xmlnsCache, typeCache);
+			}
+			catch
+			{
+				return false;
+			}
+
 			rootClrNamespace = "__XamlGeneratedCode__";
 			rootType = $"__Type{uid}";
 			generateDefaultCtor = true;
@@ -336,7 +378,7 @@ static class CodeBehindCodeWriter
 
 		namedFields = GetNamedFields(root, nsmgr, compilation, xmlnsCache, typeCache, cancellationToken, reportDiagnostic);
 		var typeArguments = GetAttributeValue(root, "TypeArguments", XamlParser.X2006Uri, XamlParser.X2009Uri);
-		baseType = new XmlType(root.NamespaceURI, root.LocalName, typeArguments != null ? TypeArgumentsParser.ParseExpression(typeArguments, nsmgr, null) : null).GetTypeSymbol(reportDiagnostic, compilation, xmlnsCache);
+		baseType = new XmlType(root.NamespaceURI, root.LocalName, typeArguments != null ? TypeArgumentsParser.ParseExpression(typeArguments, nsmgr, null) : null).GetTypeSymbol(reportDiagnostic, compilation, xmlnsCache, typeCache);
 
 		// x:ClassModifier attribute
 		var classModifier = GetAttributeValue(root, "ClassModifier", XamlParser.X2006Uri, XamlParser.X2009Uri);
@@ -345,6 +387,7 @@ static class CodeBehindCodeWriter
 		return true;
 	}
 
+#if _MAUIXAML_SOURCEGEN_BACKCOMPAT
 	//true, unless explicitely false
 	static bool GetXamlCompilationProcessingInstruction(XmlDocument xmlDoc)
 	{
@@ -358,6 +401,7 @@ static class CodeBehindCodeWriter
 
 		return true;
 	}
+#endif
 
 	internal static string GetWarningDisable(XmlDocument xmlDoc)
 	{
@@ -375,7 +419,7 @@ static class CodeBehindCodeWriter
 		return string.Join(", ", warnings);
 	}
 
-	static IEnumerable<(string name, string type, string accessModifier)> GetNamedFields(XmlNode root, XmlNamespaceManager nsmgr, Compilation compilation, AssemblyCaches xmlnsCache, IDictionary<XmlType, ITypeSymbol> typeCache, CancellationToken cancellationToken, Action<Diagnostic>? reportDiagnostic)
+	static IEnumerable<(string name, string type, string accessModifier)> GetNamedFields(XmlNode root, XmlNamespaceManager nsmgr, Compilation compilation, AssemblyAttributes xmlnsCache, IDictionary<XmlType, INamedTypeSymbol> typeCache, CancellationToken cancellationToken, Action<Diagnostic>? reportDiagnostic)
 	{
 		var xPrefix = nsmgr.LookupPrefix(XamlParser.X2006Uri) ?? nsmgr.LookupPrefix(XamlParser.X2009Uri);
 		if (xPrefix == null)
@@ -405,7 +449,7 @@ static class CodeBehindCodeWriter
 			if (!accessModifiers.Contains(accessModifier)) //quick validation
 				accessModifier = "private";
 
-			yield return (name ?? "", xmlType.GetTypeSymbol(reportDiagnostic, compilation, xmlnsCache)?.ToFQDisplayString() ?? "", accessModifier);
+			yield return (name ?? "", xmlType.GetTypeSymbol(reportDiagnostic, compilation, xmlnsCache, typeCache)?.ToFQDisplayString() ?? "", accessModifier);
 		}
 	}
 
@@ -431,5 +475,46 @@ static class CodeBehindCodeWriter
 			return attr.Value;
 		}
 		return null;
+	}
+
+	static string StripLineInfoFromXmlExceptionMessage(string message)
+	{
+		// XmlException messages typically end with " Line X, position Y."
+		// We want to strip that since we're reporting location separately
+		var lineIndex = message.LastIndexOf(" Line ");
+		if (lineIndex > 0)
+		{
+			// Strip both the trailing period after the line info and any double periods
+			return message.Substring(0, lineIndex).TrimEnd('.', ' ');
+		}
+		return message;
+	}
+
+	static IXmlLineInfo ExtractLineInfoFromMessage(string message)
+	{
+		// Try to extract "Line X, position Y" from the message
+		var lineIndex = message.LastIndexOf(" Line ");
+		if (lineIndex > 0)
+		{
+			try
+			{
+				var lineInfoPart = message.Substring(lineIndex + 6); // Skip " Line "
+				var parts = lineInfoPart.Split(new[] { ", position " }, StringSplitOptions.None);
+				if (parts.Length == 2)
+				{
+					var lineStr = parts[0].Trim();
+					var posStr = parts[1].TrimEnd('.', ' ');
+					if (int.TryParse(lineStr, out int lineNumber) && int.TryParse(posStr, out int linePosition))
+					{
+						return new XmlLineInfo(lineNumber, linePosition);
+					}
+				}
+			}
+			catch
+			{
+				// Ignore parsing errors
+			}
+		}
+		return new XmlLineInfo();
 	}
 }

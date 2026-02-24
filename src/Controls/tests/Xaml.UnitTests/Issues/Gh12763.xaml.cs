@@ -1,22 +1,22 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh12763 : ContentPage
 {
 	public Gh12763() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void QuotesInStringFormat([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void QuotesInStringFormat(XamlInflator inflator)
 		{
 			var layout = new Gh12763(inflator);
-			Assert.That(layout.label.Text, Is.EqualTo("\"Foo\""));
+			Assert.Equal("\"Foo\"", layout.label.Text);
 		}
 	}
 }

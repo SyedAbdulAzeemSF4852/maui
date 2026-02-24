@@ -25,6 +25,9 @@ namespace Microsoft.Maui
 		const bool IsHybridWebViewSupportedByDefault = true;
 		const bool SupportNamescopesByDefault = true;
 		const bool EnableDiagnosticsByDefault = false;
+		const bool IsMeterSupportedByDefault = true;
+		const bool EnableAspireByDefault = true;
+		const bool IsMaterial3EnabledByDefault = false;
 
 #pragma warning disable IL4000 // Return value does not match FeatureGuardAttribute 'System.Diagnostics.CodeAnalysis.RequiresUnreferencedCodeAttribute'. 
 #if NET9_0_OR_GREATER
@@ -102,6 +105,15 @@ namespace Microsoft.Maui
 
 		}
 
+		// https://github.com/dotnet/runtime/blob/8c7de742a77ed3919a3f3fe8c4475fce689f5e83/src/libraries/System.Private.CoreLib/src/System/Diagnostics/Tracing/EventSource.cs#L291-L295
+#if NET9_0_OR_GREATER
+		[FeatureSwitchDefinition($"System.Diagnostics.Metrics.Meter.IsSupported")]
+#endif
+		internal static bool IsMeterSupported { get; } = InitializeIsMeterSupported();
+
+		private static bool InitializeIsMeterSupported() =>
+			AppContext.TryGetSwitch("System.Diagnostics.Metrics.Meter.IsSupported", out bool isSupported) ? isSupported : IsMeterSupportedByDefault;
+
 #if NET9_0_OR_GREATER
 		[FeatureSwitchDefinition($"{FeatureSwitchPrefix}.{nameof(EnableDiagnostics)}")]
 #endif
@@ -128,6 +140,22 @@ namespace Microsoft.Maui
 				AppContext.SetSwitch($"{FeatureSwitchPrefix}.{nameof(EnableMauiDiagnostics)}", value);
 			}
 		}
+
+#if NET9_0_OR_GREATER
+		[FeatureSwitchDefinition($"{FeatureSwitchPrefix}.{nameof(EnableMauiAspire)}")]
+#endif
+		public static bool EnableMauiAspire => AppContext.TryGetSwitch($"{FeatureSwitchPrefix}.{nameof(EnableMauiAspire)}", out bool isEnabled)
+				? isEnabled
+				: EnableAspireByDefault;
+
+#if NET10_0_OR_GREATER
+		[FeatureSwitchDefinition($"{FeatureSwitchPrefix}.{nameof(IsMaterial3Enabled)}")]
+#endif
+		public static bool IsMaterial3Enabled =>
+			AppContext.TryGetSwitch($"{FeatureSwitchPrefix}.{nameof(IsMaterial3Enabled)}", out bool isEnabled)
+				? isEnabled
+				: IsMaterial3EnabledByDefault;
+
 #pragma warning restore IL4000
 	}
 }

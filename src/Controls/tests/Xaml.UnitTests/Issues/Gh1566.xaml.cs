@@ -1,21 +1,21 @@
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh1566
 {
 	public Gh1566() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void ObsoletePropsDoNotThrow([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ObsoletePropsDoNotThrow(XamlInflator inflator)
 		{
 			var layout = new Gh1566(inflator);
-			Assert.That(layout.frame.BorderColor, Is.EqualTo(Colors.Red));
+			Assert.Equal(Colors.Red, layout.frame.BorderColor);
 		}
 	}
 }

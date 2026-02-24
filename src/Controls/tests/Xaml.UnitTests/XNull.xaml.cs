@@ -1,17 +1,17 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class XNull : ContentPage
 {
 	public XNull() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Xaml Inflation")]
 	public class Tests
 	{
-		[Test]
-		public void SupportsXNull([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void SupportsXNull(XamlInflator inflator)
 		{
 			var layout = new XNull(inflator);
 			Assert.True(layout.Resources.ContainsKey("null"));

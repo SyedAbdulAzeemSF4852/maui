@@ -1,33 +1,40 @@
+using System;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Maui17484 : ContentPage
 {
 	public Maui17484() => InitializeComponent();
 
-	class Test
+	[Collection("Issue")]
+	public class Test : IDisposable
 	{
-		[SetUp] public void Setup() => AppInfo.SetCurrent(new MockAppInfo());
-		[TearDown] public void TearDown() => AppInfo.SetCurrent(null);
+		public Test() => AppInfo.SetCurrent(new MockAppInfo());
+		public void Dispose() => AppInfo.SetCurrent(null);
 
-		[Test]
-		public void ObsoleteinDT([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ObsoleteinDT(XamlInflator inflator)
 		{
 			if (inflator == XamlInflator.XamlC)
-				Assert.DoesNotThrow(() => MockCompiler.Compile(typeof(Maui17484)));
+			{
+				var ex = Record.Exception(() => MockCompiler.Compile(typeof(Maui17484)));
+				Assert.Null(ex);
+			}
 			else if (inflator == XamlInflator.SourceGen)
 			{
 				var result = MockSourceGenerator.RunMauiSourceGenerator(MockSourceGenerator.CreateMauiCompilation(), typeof(Maui17484));
-				Assert.That(result.Diagnostics, Is.Empty);
+				Assert.Empty(result.Diagnostics);
 			}
 			else if (inflator == XamlInflator.Runtime)
-				Assert.DoesNotThrow(() => new Maui17484(inflator));
-			else
-				Assert.Ignore("Only XamlC, SourceGen and Runtime are supported for this test");
+			{
+				var ex = Record.Exception(() => new Maui17484(inflator));
+				Assert.Null(ex);
+			}
 		}
 	}
 }

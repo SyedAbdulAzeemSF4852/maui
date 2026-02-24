@@ -1,20 +1,20 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class SharedResourceDictionary : ResourceDictionary
 {
 	public SharedResourceDictionary() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Xaml Inflation")]
 	public class Tests
 	{
-		[Test]
-		public void ResourcesDirectoriesCanBeXamlRoots([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ResourcesDirectoriesCanBeXamlRoots(XamlInflator inflator)
 		{
 			var layout = new SharedResourceDictionary(inflator);
-			Assert.AreEqual(5, layout.Count);
+			Assert.Equal(5, layout.Count);
 		}
 	}
 }

@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Maui.Controls.Diagnostics;
 using Microsoft.Maui.Controls.Handlers;
 using Microsoft.Maui.Controls.Handlers.Items;
 using Microsoft.Maui.Controls.Shapes;
@@ -215,6 +216,8 @@ public static partial class AppHostBuilderExtensions
 			builder.Services.AddScoped<IHybridWebViewTaskManager>(_ => new HybridWebViewTaskManager());
 		}
 
+		builder.ConfigureMauiControlsDiagnostics();
+
 #if WINDOWS
 		builder.Services.TryAddEnumerable(ServiceDescriptor.Transient<IMauiInitializeService, MauiControlsInitializer>());
 #endif
@@ -286,6 +289,7 @@ public static partial class AppHostBuilderExtensions
 		ContentPage.RemapForControls();
 		ImageButton.RemapForControls();
 
+		Slider.RemapForControls();
 		return builder;
 	}
 }

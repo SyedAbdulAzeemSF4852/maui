@@ -1,6 +1,6 @@
 using System;
 using System.Collections.ObjectModel;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -22,19 +22,19 @@ public class GenericCollection : ObservableCollection<object>
 {
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class GenericCollections : ContentPage
 {
 	public GenericCollections() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Xaml Inflation")]
 	public class Tests
 	{
-		[Test]
-		public void SupportsCrookedGenericScenarios([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void SupportsCrookedGenericScenarios(XamlInflator inflator)
 		{
 			var p = new GenericCollections(inflator);
-			Assert.AreEqual("Foo", (p.label0.GetValue(AttachedBP.AttachedBPProperty) as GenericCollection)[0]);
+			Assert.Equal("Foo", (p.label0.GetValue(AttachedBP.AttachedBPProperty) as GenericCollection)[0]);
 		}
 	}
 }

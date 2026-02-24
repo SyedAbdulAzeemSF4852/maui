@@ -3,6 +3,16 @@
   <Import Condition="'$(EnvironmentBuildPropsImported)' != 'True'" Project="$(MSBuildThisFileDirectory)eng\Environment.Build.props" />
 
   <PropertyGroup>
+    <!-- 
+      Keep backward compatibility with XamlC, XamlCompilationAttribute, and xaml-comp processing instruction
+      When we're ready to turn this off, we can remove all code depending on this condition, and drop this property group
+      -->
+
+    <_MauiXamlSourceGenBackCompat>true</_MauiXamlSourceGenBackCompat>
+    <DefineConstants Condition=" '$(_MauiXamlSourceGenBackCompat)' == 'true' ">$(DefineConstants);_MAUIXAML_SOURCEGEN_BACKCOMPAT</DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Detailed trimmer warnings, if present -->
     <TrimmerSingleWarn>false</TrimmerSingleWarn>
@@ -16,6 +26,7 @@
     <IncludePreviousTfms>false</IncludePreviousTfms>
     <IncludePreviousTfmsEssentials>false</IncludePreviousTfmsEssentials>
     <IncludePreviousTfmsGraphics>false</IncludePreviousTfmsGraphics>
+    <IncludePreviousTfmsEssentialsAI>false</IncludePreviousTfmsEssentialsAI>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -42,8 +53,8 @@
   </PropertyGroup>
 
   <PropertyGroup>
-    <NuGetAuditMode>all</NuGetAuditMode>
-    <NuGetAuditLevel>moderate</NuGetAuditLevel>
+    <NuGetAuditMode>direct</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
     <RestoreEnablePackagePruning>false</RestoreEnablePackagePruning>
   </PropertyGroup>
 
@@ -137,6 +148,16 @@
     <GenerateLibraryLayout>true</GenerateLibraryLayout>
     <DisableEmbeddedXbf>false</DisableEmbeddedXbf>
     <EnablePreviewMsixTooling>true</EnablePreviewMsixTooling>
+    <AppxBundle>Never</AppxBundle>
+  </PropertyGroup>
+
+  <!-- TypeScript compilation -->
+  <PropertyGroup>
+    <TypeScriptTarget>ES2020</TypeScriptTarget>
+    <TypeScriptSourceMap>false</TypeScriptSourceMap>
+    <TypeScriptNoImplicitAny>true</TypeScriptNoImplicitAny>
+    <TypeScriptCompileOnSaveEnabled>true</TypeScriptCompileOnSaveEnabled>
+    <TypeScriptCompileBlocked Condition=" '$(TypeScriptCompileBlocked)' == '' and '$(CI)' != 'true' and '$(TF_BUILD)' != 'true' ">true</TypeScriptCompileBlocked>
   </PropertyGroup>
 
   <!-- Windows specific settings -->
@@ -147,16 +168,16 @@
   <!-- version number information -->
   <PropertyGroup>
     <!-- Default versions from the SDKs (update when there is a new TFM version) -->
-    <IosTargetFrameworkVersionSdkDefault>18.5</IosTargetFrameworkVersionSdkDefault>
-    <TvosTargetFrameworkVersionSdkDefault>18.5</TvosTargetFrameworkVersionSdkDefault>
-    <MacCatalystTargetFrameworkVersionSdkDefault>18.5</MacCatalystTargetFrameworkVersionSdkDefault>
-    <MacosTargetFrameworkVersionSdkDefault>15.5</MacosTargetFrameworkVersionSdkDefault>
+    <IosTargetFrameworkVersionSdkDefault>26.0</IosTargetFrameworkVersionSdkDefault>
+    <TvosTargetFrameworkVersionSdkDefault>26.0</TvosTargetFrameworkVersionSdkDefault>
+    <MacCatalystTargetFrameworkVersionSdkDefault>26.0</MacCatalystTargetFrameworkVersionSdkDefault>
+    <MacosTargetFrameworkVersionSdkDefault>26.0</MacosTargetFrameworkVersionSdkDefault>
     <AndroidTargetFrameworkVersionSdkDefault>36.0</AndroidTargetFrameworkVersionSdkDefault>
     <!-- Current .NET -->
-    <IosTargetFrameworkVersion>18.5</IosTargetFrameworkVersion>
-    <TvosTargetFrameworkVersion>18.5</TvosTargetFrameworkVersion>
-    <MacCatalystTargetFrameworkVersion>18.5</MacCatalystTargetFrameworkVersion>
-    <MacosTargetFrameworkVersion>15.5</MacosTargetFrameworkVersion>
+    <IosTargetFrameworkVersion>26.0</IosTargetFrameworkVersion>
+    <TvosTargetFrameworkVersion>26.0</TvosTargetFrameworkVersion>
+    <MacCatalystTargetFrameworkVersion>26.0</MacCatalystTargetFrameworkVersion>
+    <MacosTargetFrameworkVersion>26.0</MacosTargetFrameworkVersion>
     <AndroidTargetFrameworkVersion>36.0</AndroidTargetFrameworkVersion>
     <WindowsTargetFrameworkVersion>10.0.19041.0</WindowsTargetFrameworkVersion>
     <Windows2TargetFrameworkVersion>10.0.20348.0</Windows2TargetFrameworkVersion>
@@ -220,12 +241,30 @@
     <MauiEmbeddingPlatforms Condition="'$(IncludeMacCatalystTargetFrameworks)' == 'true'">net$(_MauiDotNetVersion)-maccatalyst;$(MauiEmbeddingPlatforms)</MauiEmbeddingPlatforms>
     <MauiEmbeddingPlatforms Condition="'$(IncludeIosTargetFrameworks)' == 'true'">net$(_MauiDotNetVersion)-ios;$(MauiEmbeddingPlatforms)</MauiEmbeddingPlatforms>
 
+    <!-- App: Manual Test Sample TFMs (no Tizen yet) -->
+    <MauiManualTestsPlatforms Condition="'$(IncludeWindowsTargetFrameworks)' == 'true'">$(WindowsMauiPlatforms);$(MauiManualTestsPlatforms)</MauiManualTestsPlatforms>
+    <MauiManualTestsPlatforms Condition="'$(IncludeAndroidTargetFrameworks)' == 'true'">net$(_MauiDotNetVersion)-android;$(MauiManualTestsPlatforms)</MauiManualTestsPlatforms>
+    <MauiManualTestsPlatforms Condition="'$(IncludeMacCatalystTargetFrameworks)' == 'true'">net$(_MauiDotNetVersion)-maccatalyst;$(MauiManualTestsPlatforms)</MauiManualTestsPlatforms>
+    <MauiManualTestsPlatforms Condition="'$(IncludeIosTargetFrameworks)' == 'true'">net$(_MauiDotNetVersion)-ios;$(MauiManualTestsPlatforms)</MauiManualTestsPlatforms>
+    <MauiManualTestsPreviousPlatforms Condition="'$(IncludeTizenTargetFrameworks)' == 'true'">net$(_MauiPreviousDotNetVersion)-tizen;$(MauiManualTestsPreviousPlatforms)</MauiManualTestsPreviousPlatforms>
+    <MauiManualTestsPreviousPlatforms Condition="'$(IncludeWindowsTargetFrameworks)' == 'true'">$(WindowsMauiPreviousPlatforms);$(MauiManualTestsPreviousPlatforms)</MauiManualTestsPreviousPlatforms>
+    <MauiManualTestsPreviousPlatforms Condition="'$(IncludeAndroidTargetFrameworks)' == 'true'">net$(_MauiPreviousDotNetVersion)-android;$(MauiManualTestsPreviousPlatforms)</MauiManualTestsPreviousPlatforms>
+    <MauiManualTestsPreviousPlatforms Condition="'$(IncludeMacCatalystTargetFrameworks)' == 'true'">net$(_MauiPreviousDotNetVersion)-maccatalyst;$(MauiManualTestsPreviousPlatforms)</MauiManualTestsPreviousPlatforms>
+    <MauiManualTestsPreviousPlatforms Condition="'$(IncludeIosTargetFrameworks)' == 'true'">net$(_MauiPreviousDotNetVersion)-ios;$(MauiManualTestsPreviousPlatforms)</MauiManualTestsPreviousPlatforms>
+
     <!-- Library: Graphics TFMs -->
     <MauiGraphicsPlatforms>$(MauiPlatforms)</MauiGraphicsPlatforms>
     <MauiGraphicsPlatforms Condition="'$(IncludeMacOSTargetFrameworks)' == 'true'">$(MauiGraphicsPlatforms);net$(_MauiDotNetVersion)-macos$(MacosTargetFrameworkVersion)</MauiGraphicsPlatforms>
     <!-- Library: Previous .NET Graphics TFMs -->
     <MauiGraphicsPreviousPlatforms>$(MauiPreviousPlatforms)</MauiGraphicsPreviousPlatforms>
     <MauiGraphicsPreviousPlatforms Condition="'$(IncludeMacOSTargetFrameworks)' == 'true'">$(MauiGraphicsPreviousPlatforms);net$(_MauiPreviousDotNetVersion)-macos$(MacosPreviousTargetFrameworkVersion)</MauiGraphicsPreviousPlatforms>
+
+    <!-- Library: Essentials AI TFMs -->
+    <MauiEssentialsAIPlatforms>$(MauiPlatforms)</MauiEssentialsAIPlatforms>
+    <MauiEssentialsAIPlatforms Condition="'$(IncludeMacOSTargetFrameworks)' == 'true'">$(MauiEssentialsAIPlatforms);net$(_MauiDotNetVersion)-macos$(MacosTargetFrameworkVersion)</MauiEssentialsAIPlatforms>
+    <!-- Library: Previous .NET EssentialsAI TFMs -->
+    <MauiEssentialsAIPreviousPlatforms>$(MauiPreviousPlatforms)</MauiEssentialsAIPreviousPlatforms>
+    <MauiEssentialsAIPreviousPlatforms Condition="'$(IncludeMacOSTargetFrameworks)' == 'true'">$(MauiEssentialsAIPreviousPlatforms);net$(_MauiPreviousDotNetVersion)-macos$(MacosPreviousTargetFrameworkVersion)</MauiEssentialsAIPreviousPlatforms>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -255,5 +294,10 @@
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
     <!-- Disables the transitive restore of packages like Microsoft.AspNetCore.App.Ref, Microsoft.WindowsDesktop.App.Ref -->
     <DisableTransitiveFrameworkReferenceDownloads>true</DisableTransitiveFrameworkReferenceDownloads>
+  </PropertyGroup>
+
+   <!-- Workaround for EmitCompilerGeneratedFiles issue https://microsoft.visualstudio.com/OS/_workitems/edit/57204991 -->
+  <PropertyGroup>
+    <CoreCompileDependsOn>$(CoreCompileDependsOn);CreateCompilerGeneratedFilesOutputPath</CoreCompileDependsOn>
   </PropertyGroup>
 </Project>

@@ -3,10 +3,12 @@ using System;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Xaml.Diagnostics;
-using Microsoft.Maui.Dispatching;
 
 namespace Microsoft.Maui.Controls
 {
+#if NET11_0_OR_GREATER
+	public
+#endif
 	class AppThemeBinding : BindingBase
 	{
 		public const string AppThemeResource = "__MAUI_ApplicationTheme__";

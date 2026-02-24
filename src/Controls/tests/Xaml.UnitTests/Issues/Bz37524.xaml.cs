@@ -1,11 +1,10 @@
 using System;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz37524 : ContentPage
 {
 	public Bz37524()
@@ -13,14 +12,15 @@ public partial class Bz37524 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void MultiTriggerConditionNotApplied([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void MultiTriggerConditionNotApplied(XamlInflator inflator)
 		{
 			var layout = new Bz37524(inflator);
-			Assert.AreEqual(false, layout.TheButton.IsEnabled);
+			Assert.False(layout.TheButton.IsEnabled);
 		}
 	}
 }

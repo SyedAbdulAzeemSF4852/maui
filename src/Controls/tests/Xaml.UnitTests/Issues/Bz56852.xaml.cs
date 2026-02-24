@@ -1,8 +1,8 @@
-using NUnit.Framework;
+using System;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz56852
 {
 	public Bz56852()
@@ -10,16 +10,17 @@ public partial class Bz56852
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests : IDisposable
 	{
-		[TearDown] public void TearDown() => Application.Current = null;
+		public void Dispose() => Application.Current = null;
 
-		[Test]
-		public void DynamicResourceApplyingOrder([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void DynamicResourceApplyingOrder(XamlInflator inflator)
 		{
 			var layout = new Bz56852(inflator);
-			Assert.That(layout.label.FontSize, Is.EqualTo(50));
+			Assert.Equal(50, layout.label.FontSize);
 		}
 	}
 }

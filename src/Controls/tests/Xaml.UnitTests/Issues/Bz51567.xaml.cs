@@ -1,8 +1,7 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz51567 : ContentPage
 {
 	public Bz51567()
@@ -10,11 +9,12 @@ public partial class Bz51567 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void SetterWithElementValue([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void SetterWithElementValue(XamlInflator inflator)
 		{
 			var page = new Bz51567(inflator);
 			var style = page.Resources["ListText"] as Style;

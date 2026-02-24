@@ -1,8 +1,7 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh4326 : ContentPage
 {
 	public static string Foo = "Foo";
@@ -10,17 +9,18 @@ public partial class Gh4326 : ContentPage
 
 	public Gh4326() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void FindStaticInternal([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void FindStaticInternal(XamlInflator inflator)
 		{
 			var layout = new Gh4326(inflator);
 
-			Assert.That(layout.labelfoo.Text, Is.EqualTo("Foo"));
-			Assert.That(layout.labelbar.Text, Is.EqualTo("Bar"));
-			Assert.That(layout.labelinternalvisibleto.Text, Is.EqualTo(Style.StyleClassPrefix));
+			Assert.Equal("Foo", layout.labelfoo.Text);
+			Assert.Equal("Bar", layout.labelbar.Text);
+			Assert.Equal(Style.StyleClassPrefix, layout.labelinternalvisibleto.Text);
 		}
 	}
 }

@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests
 {
@@ -9,7 +9,6 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 		public IList<ContentView> Views { get; set; }
 	}
 
-	[XamlProcessing(XamlInflator.Default, true)]
 	public partial class Bz36422 : ContentPage
 	{
 		public Bz36422()
@@ -17,14 +16,15 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 			InitializeComponent();
 		}
 
-		[TestFixture]
-		class Tests
+		[Collection("Issue")]
+		public class Tests
 		{
-			[Test]
-			public void xArrayCanBeAssignedToIListT([Values] XamlInflator inflator)
+			[Theory]
+			[XamlInflatorData]
+			internal void xArrayCanBeAssignedToIListT(XamlInflator inflator)
 			{
 				var layout = new Bz36422(inflator);
-				Assert.AreEqual(3, layout.control.Views.Count);
+				Assert.Equal(3, layout.control.Views.Count);
 			}
 		}
 	}

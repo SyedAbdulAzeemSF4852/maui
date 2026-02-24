@@ -1,20 +1,20 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Maui2304Closed
 {
 	public Maui2304Closed() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void XamlCDoesntFail([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void XamlCDoesntFail(XamlInflator inflator)
 		{
 			var layout = new Maui2304Closed(inflator);
-			Assert.AreEqual(typeof(OnPlatform<string>), typeof(Maui2304Closed).BaseType);
+			Assert.Equal(typeof(OnPlatform<string>), typeof(Maui2304Closed).BaseType);
 		}
 	}
 }

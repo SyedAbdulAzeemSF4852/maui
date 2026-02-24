@@ -1,24 +1,25 @@
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh3280 : ContentPage
 {
 	public Gh3280() => InitializeComponent();
 
 	public Size Foo { get; set; }
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void SizeHasConverter([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void SizeHasConverter(XamlInflator inflator)
 		{
 			Gh3280 layout = null;
-			Assert.DoesNotThrow(() => layout = new Gh3280(inflator));
-			Assert.That(layout.Foo, Is.EqualTo(new Size(15, 25)));
+			var ex = Record.Exception(() => layout = new Gh3280(inflator));
+			Assert.Null(ex);
+			Assert.Equal(new Size(15, 25), layout.Foo);
 		}
 	}
 }

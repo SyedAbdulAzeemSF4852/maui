@@ -1,8 +1,7 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class DynamicResource : ContentPage
 {
 	public DynamicResource()
@@ -10,11 +9,12 @@ public partial class DynamicResource : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
+	[Collection("Xaml Inflation")]
 	public class Tests
 	{
-		[Test]
-		public void TestDynamicResources([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void TestDynamicResources(XamlInflator inflator)
 		{
 			var layout = new DynamicResource(inflator);
 			var label = layout.label0;
@@ -24,7 +24,7 @@ public partial class DynamicResource : ContentPage
 			layout.Resources = new ResourceDictionary {
 				{"FooBar", "FOOBAR"},
 			};
-			Assert.AreEqual("FOOBAR", label.Text);
+			Assert.Equal("FOOBAR", label.Text);
 		}
 	}
 }

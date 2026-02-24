@@ -1,28 +1,28 @@
 // Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh6996 : ContentPage
 {
 	public Gh6996() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void FontImageSourceColorWithDynamicResource([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void FontImageSourceColorWithDynamicResource(XamlInflator inflator)
 		{
 			var layout = new Gh6996(inflator);
 			Image image = layout.image;
 			var fis = image.Source as FontImageSource;
-			Assert.That(fis.Color, Is.EqualTo(Colors.Orange));
+			Assert.Equal(Colors.Orange, fis.Color);
 
 			layout.Resources["imcolor"] = layout.Resources["notBlue"];
-			Assert.That(fis.Color, Is.EqualTo(Colors.Lime));
+			Assert.Equal(Colors.Lime, fis.Color);
 		}
 	}
 }

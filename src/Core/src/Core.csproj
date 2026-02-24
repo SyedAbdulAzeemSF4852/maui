@@ -14,9 +14,17 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="!$(TargetFramework.StartsWith('netstandard'))">
+    <IsAotCompatible>true</IsAotCompatible>
     <EnableTrimAnalyzer>true</EnableTrimAnalyzer>
     <EnableAotAnalyzer>true</EnableAotAnalyzer>
+
+    <!-- This project implements generic WinRT interfaces which requires generated code using unsafe for trimming and AOT compatibility if passed across the WinRT ABI. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <EnableSingleFileAnalyzer>true</EnableSingleFileAnalyzer>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">
+    <IsBindingProject>true</IsBindingProject>
   </PropertyGroup>
 
   <PropertyGroup>
@@ -48,7 +56,7 @@
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-android'))">
     <AndroidGradleProject Include="../AndroidNative/build.gradle" ModuleName="maui" />
-    <PackageReference Include="Xamarin.Android.Glide" Version="$(_XamarinAndroidGlideVersion)" />
+    <PackageReference Include="Xamarin.Android.Glide" />
     <PackageReference Include="Xamarin.AndroidX.Lifecycle.LiveData" />
     <PackageReference Include="Xamarin.Google.Android.Material" />
     <PackageReference Include="Xamarin.AndroidX.SwipeRefreshLayout" />
@@ -56,6 +64,13 @@
     <PackageReference Include="Xamarin.AndroidX.Navigation.Fragment" />
     <PackageReference Include="Xamarin.AndroidX.Navigation.Runtime" />
     <PackageReference Include="Xamarin.AndroidX.Navigation.Common" />
+  </ItemGroup>
+  <ItemGroup Condition="$(TargetFramework.Contains('-ios')) or $(TargetFramework.Contains('-maccatalyst'))">
+    <XcodeProject Include="..\AppleNative\PlatformInterop\MauiPlatformInterop.xcodeproj">
+      <SchemeName>MauiPlatformInterop</SchemeName>
+    </XcodeProject>
+    <ObjcBindingApiDefinition Include="..\AppleNative\ApiDefinition.cs" />
+    <ObjcBindingCoreSource Include="..\AppleNative\StructsAndEnums.cs" />
   </ItemGroup>
   <ItemGroup Condition="$(TargetFramework.Contains('-tizen'))">
     <PackageReference Include="Tizen.UIExtensions.NUI" />
@@ -73,13 +88,6 @@
   </ItemGroup>
 
   <!-- TypeScript compilation -->
-  <PropertyGroup>
-    <TypeScriptTarget>ES2020</TypeScriptTarget>
-    <TypeScriptSourceMap>false</TypeScriptSourceMap>
-    <TypeScriptNoImplicitAny>true</TypeScriptNoImplicitAny>
-    <TypeScriptCompileOnSaveEnabled>true</TypeScriptCompileOnSaveEnabled>
-    <TypeScriptCompileBlocked Condition=" '$(CI)' != 'true' and '$(TF_BUILD)' != 'true' ">true</TypeScriptCompileBlocked>
-  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.TypeScript.MSBuild" Version="5.7.1">
       <PrivateAssets>all</PrivateAssets>
@@ -88,6 +96,10 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Handlers\HybridWebView\HybridWebView.js" LogicalName="_framework/hybridwebview.js" />
+    <None Remove="Handlers\HybridWebView\HybridWebView.js" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Platform\iOS\CALayerAutosizeObserver.cs" />
   </ItemGroup>
 
   <Target Name="_CopyToBuildTasksDir" AfterTargets="Build">
@@ -96,10 +108,12 @@
       <_CopyItems Include="nuget\buildTransitive\net-windows\**" SubFolder="net$(_MauiMinimumSupportedDotNetTfm)-windows$(MinimumWindowsTargetFrameworkVersion)" />
       <_CopyItems Include="$(IntermediateOutputPath)Microsoft.Maui.Core.BundledVersions.targets" SubFolder="" />
     </ItemGroup>
-    <Copy SourceFiles="@(_CopyItems)" DestinationFolder="$(_MauiBuildTasksLocation)%(SubFolder)%(RecursiveDir)" ContinueOnError="true" Retries="0" />
+    <Copy SourceFiles="@(_CopyItems)" DestinationFolder="$(_MauiBuildTasksLocation)%(SubFolder)%(RecursiveDir)" ContinueOnError="true" Retries="3" RetryDelayMilliseconds="1000" />
   </Target>
 
   <Import Project="$(MauiSrcDirectory)Workload\Shared\LibraryPacks.targets" />
+
+  <Import Project="$(MauiSrcDirectory)AppleBindings.targets" />
 
   <Import Project="$(MauiSrcDirectory)PublicAPI.targets" />
 

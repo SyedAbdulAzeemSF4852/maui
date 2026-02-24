@@ -1,4 +1,4 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -7,7 +7,6 @@ public class Gh5242VM
 	public int? Value { get; set; }
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh5242 : ContentPage
 {
 	public static readonly BindableProperty NullableIntProperty = BindableProperty.Create(nameof(NullableInt), typeof(int?), typeof(Gh5242), defaultValue: -1);
@@ -15,17 +14,18 @@ public partial class Gh5242 : ContentPage
 
 	public Gh5242() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void BindingToNullable([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void BindingToNullable(XamlInflator inflator)
 		{
 			var layout = new Gh5242(inflator) { BindingContext = new Gh5242VM { Value = 42 } };
-			Assert.That(layout.NullableInt, Is.EqualTo(42));
+			Assert.Equal(42, layout.NullableInt);
 
 			layout.BindingContext = new Gh5242VM { Value = null };
-			Assert.That(layout.NullableInt, Is.Null);
+			Assert.Null(layout.NullableInt);
 		}
 	}
 }

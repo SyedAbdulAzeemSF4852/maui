@@ -1,8 +1,7 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public class Issue3076Button : Button
 {
 	public static readonly BindableProperty VerticalContentAlignmentProperty =
@@ -15,30 +14,31 @@ public class Issue3076Button : Button
 	}
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Issue3076 : ContentPage
 {
 	public Issue3076() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Issue")]
 	public class Tests
 	{
-		[Test]
-		public void CanUseBindableObjectDefinedInThisAssembly([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void CanUseBindableObjectDefinedInThisAssembly(XamlInflator inflator)
 		{
 			var layout = new Issue3076(inflator);
 
-			Assert.That(layout.local, Is.TypeOf<Issue3076Button>());
-			Assert.AreEqual(TextAlignment.Start, layout.local.VerticalContentAlignment);
+			Assert.IsType<Issue3076Button>(layout.local);
+			Assert.Equal(TextAlignment.Start, layout.local.VerticalContentAlignment);
 		}
 
-		[Test]
-		public void CanUseBindableObjectDefinedInOtherAssembly([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void CanUseBindableObjectDefinedInOtherAssembly(XamlInflator inflator)
 		{
 			var layout = new Issue3076(inflator);
 
-			Assert.That(layout.controls, Is.TypeOf<Microsoft.Maui.Controls.ControlGallery.Issue3076Button>());
-			Assert.AreEqual(TextAlignment.Start, layout.controls.HorizontalContentAlignment);
+			Assert.IsType<Microsoft.Maui.Controls.ControlGallery.Issue3076Button>(layout.controls);
+			Assert.Equal(TextAlignment.Start, layout.controls.HorizontalContentAlignment);
 		}
 	}
 }

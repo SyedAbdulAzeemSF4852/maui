@@ -477,7 +477,8 @@ public class TabbedPageManager
 			child.IgnoresContainerArea = child is NavigationPage;
 	}
 
-	void UpdateOffscreenPageLimit()
+	[Obsolete]
+	internal void UpdateOffscreenPageLimit()
 	{
 		_viewPager.OffscreenPageLimit = Element.OnThisPlatform().OffscreenPageLimit();
 	}
@@ -733,13 +734,13 @@ public class TabbedPageManager
 				// instead of leaving the application in a broken state
 				if (IsDarkTheme)
 				{
-					defaultColor = ColorUtils.SetAlphaComponent(
+					defaultColor = AndroidX.Core.Graphics.ColorUtils.SetAlphaComponent(
 						ContextCompat.GetColor(_context.Context, Resource.Color.primary_dark_material_light),
 						153); // 60% opacity
 				}
 				else
 				{
-					defaultColor = ColorUtils.SetAlphaComponent(
+					defaultColor = AndroidX.Core.Graphics.ColorUtils.SetAlphaComponent(
 						ContextCompat.GetColor(_context.Context, Resource.Color.primary_dark_material_dark),
 						153); // 60% opacity
 				}
@@ -899,6 +900,13 @@ public class TabbedPageManager
 
 				icon.Mutate();
 				icon.SetState(_stateSet);
+
+				// The FontImageSource has its own color, so we don't need to apply the tint list.
+				if (page.IconImageSource is not FontImageSource)
+				{
+					_tabLayout.TabIconTint = colors;
+				}
+
 				ADrawableCompat.SetTintList(icon, colors);
 			}
 		}

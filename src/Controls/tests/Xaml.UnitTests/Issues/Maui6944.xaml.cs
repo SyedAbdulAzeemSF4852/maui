@@ -1,26 +1,29 @@
+using System;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Maui6944 : ContentPage
 {
 	public Maui6944() => InitializeComponent();
 
-	class Test
+	[Collection("Issue")]
+	public class Test : IDisposable
 	{
-		[SetUp] public void Setup() => AppInfo.SetCurrent(new MockAppInfo());
-		[TearDown] public void TearDown() => AppInfo.SetCurrent(null);
+		public Test() => AppInfo.SetCurrent(new MockAppInfo());
+		public void Dispose() => AppInfo.SetCurrent(null);
 
-		[Test]
-		public void ContentPropertyAttributeOnLayoutSubclass([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ContentPropertyAttributeOnLayoutSubclass(XamlInflator inflator)
 		{
 			var page = new Maui6944(inflator);
-			Assert.That(page.layout, Is.Not.Null);
-			Assert.That(page.layout, Is.TypeOf<Maui6944Layout>());
-			Assert.That(page.layout.ChildContent, Is.EqualTo(page.label));
+			Assert.NotNull(page.layout);
+			Assert.IsType<Maui6944Layout>(page.layout);
+			Assert.Equal(page.label, page.layout.ChildContent);
 		}
 	}
 }
@@ -43,5 +46,4 @@ public class Maui6944Layout : Maui6944Base
 		get => (View)GetValue(ChildContentProperty);
 		set => SetValue(ChildContentProperty, value);
 	}
-
 }

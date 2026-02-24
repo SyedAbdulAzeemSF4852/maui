@@ -1,6 +1,6 @@
 using System;
 using System.Globalization;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests
 {
@@ -25,7 +25,6 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 		}
 	}
 
-	[XamlProcessing(XamlInflator.Default, true)]
 	public partial class Bz18828 : ContentPage
 	{
 		public Bz18828()
@@ -34,11 +33,12 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 		}
 
 
-		[TestFixture]
-		class Tests
+		[Collection("Issue")]
+		public class Tests
 		{
-			[Test]
-			public void GridItemsLayoutWithConverter([Values] XamlInflator inflator)
+			[Theory]
+			[XamlInflatorData]
+			internal void GridItemsLayoutWithConverter(XamlInflator inflator)
 			{
 				var layout = new Bz18828(inflator);
 				Assert.True(((GridItemsLayout)layout.collectionView.ItemsLayout).Span == 2);

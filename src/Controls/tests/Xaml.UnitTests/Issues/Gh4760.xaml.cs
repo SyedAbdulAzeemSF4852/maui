@@ -1,5 +1,5 @@
 using System;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -20,19 +20,19 @@ public class Gh4760MultiplyExtension : Gh4760Base<double>
 	public override double ProvideValue() => Base * By;
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh4760 : ContentPage
 {
 	public Gh4760() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void GenericBaseClassForMarkups([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void GenericBaseClassForMarkups(XamlInflator inflator)
 		{
 			var layout = new Gh4760(inflator);
-			Assert.That(layout.label.Scale, Is.EqualTo(6));
+			Assert.Equal(6, layout.label.Scale);
 		}
 	}
 }

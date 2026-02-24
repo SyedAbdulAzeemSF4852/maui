@@ -2,8 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-
 using Microsoft.CodeAnalysis;
+using Microsoft.Maui.Controls.BindingSourceGen;
 using Microsoft.Maui.Controls.Xaml;
 
 namespace Microsoft.Maui.Controls.SourceGen;
@@ -82,6 +82,74 @@ static partial class ITypeSymbolExtensions
 		=> symbol.GetAllMembers(context).OfType<IPropertySymbol>();
 	public static IEnumerable<IPropertySymbol> GetAllProperties(this ITypeSymbol symbol, string name, SourceGenContext? context)
 		=> symbol.GetAllMembers(name, context).OfType<IPropertySymbol>();
+
+	/// <summary>
+	/// Tries to get a property by name, and if not found, checks if it could be inferred from a RelayCommand method or ObservableProperty field.
+	/// Returns the property type if found or inferred.
+	/// </summary>
+	/// <param name="symbol">The type to search</param>
+	/// <param name="propertyName">The name of the property to find</param>
+	/// <param name="context">The source generation context</param>
+	/// <param name="property">The found property symbol (null if inferred from RelayCommand or ObservableProperty)</param>
+	/// <param name="propertyType">The property type (either from the property or inferred from RelayCommand/ObservableProperty)</param>
+	/// <returns>True if property exists or can be inferred from RelayCommand or ObservableProperty</returns>
+	public static bool TryGetProperty(
+		this ITypeSymbol symbol,
+		string propertyName,
+		SourceGenContext? context,
+		out IPropertySymbol? property,
+		out ITypeSymbol? propertyType)
+	{
+		return TryGetProperty(symbol, propertyName, context, out property, out propertyType, out _);
+	}
+
+	/// <summary>
+	/// Tries to get a property by name, and if not found, checks if it could be inferred from a RelayCommand method
+	/// or an ObservableProperty attribute. Returns the property type if found or inferred.
+	/// </summary>
+	/// <param name="symbol">The type to search</param>
+	/// <param name="propertyName">The name of the property to find</param>
+	/// <param name="context">The source generation context</param>
+	/// <param name="property">The found property symbol (null if inferred from RelayCommand/ObservableProperty)</param>
+	/// <param name="propertyType">The property type (either from the property or inferred)</param>
+	/// <param name="isAssumedWritable">True if the property was inferred from an ObservableProperty attribute (which is always writable)</param>
+	/// <returns>True if property exists or can be inferred</returns>
+	public static bool TryGetProperty(
+		this ITypeSymbol symbol,
+		string propertyName,
+		SourceGenContext? context,
+		out IPropertySymbol? property,
+		out ITypeSymbol? propertyType,
+		out bool isAssumedWritable)
+	{
+		isAssumedWritable = false;
+		property = symbol.GetAllProperties(propertyName, context)
+			.FirstOrDefault(p => p.GetMethod != null && !p.GetMethod.IsStatic);
+
+		if (property != null)
+		{
+			propertyType = property.Type;
+			return true;
+		}
+
+		// If property not found, check if it could be a RelayCommand-generated property
+		// Call the BindingSourceGen extension method directly
+		if (symbol.TryGetRelayCommandPropertyType(propertyName, context?.Compilation, out propertyType))
+		{
+			return true;
+		}
+
+		// If property not found, check if it could be an ObservableProperty-generated property
+		// Call the BindingSourceGen extension method directly
+		if (symbol.TryGetObservablePropertyType(propertyName, context?.Compilation, out propertyType))
+		{
+			isAssumedWritable = true;
+			return true;
+		}
+
+		propertyType = null;
+		return false;
+	}
 
 	public static IEnumerable<IMethodSymbol> GetAllMethods(this ITypeSymbol symbol, SourceGenContext? context)
 		=> symbol.GetAllMembers(context).OfType<IMethodSymbol>();
@@ -165,38 +233,6 @@ static partial class ITypeSymbolExtensions
 		}
 
 		return false;
-	}
-
-	//FIXME: we won't need the set value in the future, but this allows to not generate for files without the attribute and avoid too many errors
-	public static (bool generateInflatorSwitch, XamlInflator inflators, bool set) GetXamlProcessing(this ITypeSymbol type)
-	{
-		var attr = type.GetAttributes("Microsoft.Maui.Controls.Xaml.XamlProcessingAttribute").FirstOrDefault(ad => ad.ConstructorArguments.Length >= 1);
-		if (attr != null)
-		{
-			var inflator = (XamlInflator)attr.ConstructorArguments[0].Value!;
-			var generateInflatorSwitch = attr.ConstructorArguments.Length == 2 && (bool)attr.ConstructorArguments[1].Value!;
-			return (generateInflatorSwitch, inflator, true);
-		}
-
-		var module = type.ContainingModule;
-		attr = module.GetAttributes("Microsoft.Maui.Controls.Xaml.XamlProcessingAttribute").FirstOrDefault(ad => ad.ConstructorArguments.Length >= 1);
-		if (attr != null)
-		{
-			var inflator = (XamlInflator)attr.ConstructorArguments[0].Value!;
-			var generateInflatorSwitch = attr.ConstructorArguments.Length == 2 && (bool)attr.ConstructorArguments[1].Value!;
-			return (generateInflatorSwitch, inflator, true);
-		}
-
-		var assembly = type.ContainingAssembly;
-		attr = assembly.GetAttributes("Microsoft.Maui.Controls.Xaml.XamlProcessingAttribute").FirstOrDefault(ad => ad.ConstructorArguments.Length >= 1);
-		if (attr != null)
-		{
-			var inflator = (XamlInflator)attr.ConstructorArguments[0].Value!;
-			var generateInflatorSwitch = attr.ConstructorArguments.Length == 2 && (bool)attr.ConstructorArguments[1].Value!;
-			return (generateInflatorSwitch, inflator, true);
-		}
-
-		return (false, XamlInflator.Default, false);
 	}
 
 	public static bool IsPublic(this ISymbol symbol)

@@ -1,22 +1,22 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class GrialIssue01 : ContentPage
 {
 	public GrialIssue01() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void ImplicitCastIsUsedOnFileImageSource([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ImplicitCastIsUsedOnFileImageSource(XamlInflator inflator)
 		{
 			var layout = new GrialIssue01(inflator);
 			var res = (FileImageSource)layout.Resources["image"];
 
-			Assert.AreEqual("path.png", res.File);
+			Assert.Equal("path.png", res.File);
 		}
 	}
 }

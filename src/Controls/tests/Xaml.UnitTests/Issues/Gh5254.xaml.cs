@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -9,16 +9,16 @@ public class Gh5254VM
 	public List<Gh5254VM> Answer { get; set; }
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh5254 : ContentPage
 {
 	public Gh5254() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void BindToIntIndexer([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void BindToIntIndexer(XamlInflator inflator)
 		{
 			var layout = new Gh5254(inflator)
 			{
@@ -30,7 +30,7 @@ public partial class Gh5254 : ContentPage
 					}
 				}
 			};
-			Assert.That(layout.label.Text, Is.EqualTo("Foo"));
+			Assert.Equal("Foo", layout.label.Text);
 		}
 	}
 }

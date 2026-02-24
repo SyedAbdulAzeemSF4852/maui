@@ -1,17 +1,17 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Issue3106 : ContentPage
 {
 	public Issue3106() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Issue")]
 	public class Tests
 	{
-		[Test]
-		public void NewDoesNotThrow([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void NewDoesNotThrow(XamlInflator inflator)
 		{
 			var p = new Issue3106(inflator);
 		}

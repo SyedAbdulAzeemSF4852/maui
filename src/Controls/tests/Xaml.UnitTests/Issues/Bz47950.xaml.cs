@@ -1,5 +1,5 @@
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -12,7 +12,6 @@ public class Bz47950Behavior : Behavior<View>
 	public static void SetColorTest(BindableObject bindable, Color value) => bindable.SetValue(ColorTestProperty, value);
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz47950 : ContentPage
 {
 	public Bz47950()
@@ -20,11 +19,12 @@ public partial class Bz47950 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void BehaviorAndStaticResource([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void BehaviorAndStaticResource(XamlInflator inflator)
 		{
 			var page = new Bz47950(inflator);
 		}

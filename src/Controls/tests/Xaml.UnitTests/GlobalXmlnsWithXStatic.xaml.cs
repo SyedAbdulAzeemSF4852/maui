@@ -1,6 +1,6 @@
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 [assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "Microsoft.Maui.Controls.Xaml.UnitTests.NSGlobalXmlnsWithXStatic")]
 
@@ -24,21 +24,24 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests.NSGlobalXmlnsWithXStatic
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests
 {
-	[XamlProcessing(XamlInflator.Default, true)]
 	public partial class GlobalXmlnsWithXStatic : ContentPage
 	{
 		public GlobalXmlnsWithXStatic() => InitializeComponent();
 
-		[Test]
-		public void XStaticWithAggregatedXmlns([Values] XamlInflator inflator)
+		[Collection("Xaml Inflation")]
+		public class Tests
 		{
-			if (inflator == XamlInflator.XamlC)
-				MockCompiler.Compile(typeof(GlobalXmlnsWithXStatic));
+			[Theory]
+			[XamlInflatorData]
+			internal void XStaticWithAggregatedXmlns(XamlInflator inflator)
+			{
+				if (inflator == XamlInflator.XamlC)
+					MockCompiler.Compile(typeof(GlobalXmlnsWithXStatic));
 
-			var page = new GlobalXmlnsWithXStatic(inflator);
-			Assert.That(page.label0.Text, Is.EqualTo("MConstant"));
+				var page = new GlobalXmlnsWithXStatic(inflator);
+				Assert.Equal("MConstant", page.label0.Text);
+			}
 		}
-
 
 	}
 }

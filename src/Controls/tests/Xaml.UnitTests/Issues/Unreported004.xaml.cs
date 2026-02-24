@@ -1,8 +1,8 @@
-using NUnit.Framework;
+using Xunit;
+using Xunit.Sdk;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Unreported004 : ContentPage
 {
 	public Unreported004() => InitializeComponent();
@@ -15,14 +15,16 @@ public partial class Unreported004 : ContentPage
 	public static string GetSomeProperty(BindableObject bindable, object foo) => null;
 	public static void SetSomeProperty(BindableObject bindable, string value) => bindable.SetValue(SomePropertyProperty, value);
 
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void MultipleGetMethodsAllowed([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void MultipleGetMethodsAllowed(XamlInflator inflator)
 		{
 			var page = new Unreported004(inflator);
 			Assert.NotNull(page.label);
-			Assert.AreEqual("foo", GetSomeProperty(page.label));
+			Assert.Equal("foo", GetSomeProperty(page.label));
 		}
 	}
 }

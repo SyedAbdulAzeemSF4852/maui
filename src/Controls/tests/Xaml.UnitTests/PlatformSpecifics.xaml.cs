@@ -1,23 +1,23 @@
 using Microsoft.Maui.Controls.PlatformConfiguration.WindowsSpecific;
-using NUnit.Framework;
+using Xunit;
 using WindowsOS = Microsoft.Maui.Controls.PlatformConfiguration.Windows;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class PlatformSpecific : FlyoutPage
 {
 	public PlatformSpecific() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Xaml Inflation")]
+	public class Tests
 	{
-		[Test]
-		public void PlatformSpecificPropertyIsSet([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void PlatformSpecificPropertyIsSet(XamlInflator inflator)
 		{
 			var layout = new PlatformSpecific(inflator);
-			Assert.AreEqual(layout.On<WindowsOS>().GetCollapseStyle(), CollapseStyle.Partial);
-			Assert.AreEqual(layout.On<WindowsOS>().CollapsedPaneWidth(), 96d);
+			Assert.Equal(CollapseStyle.Partial, layout.On<WindowsOS>().GetCollapseStyle());
+			Assert.Equal(96d, layout.On<WindowsOS>().CollapsedPaneWidth());
 		}
 	}
 }

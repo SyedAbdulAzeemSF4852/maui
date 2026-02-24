@@ -1,39 +1,40 @@
 using System;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class BuiltInConversions : ContentPage
 {
 	public BuiltInConversions() => InitializeComponent();
 
-	[TestFixture]
-	public class Tests
+	[Collection("Xaml Inflation")]
+	public class Tests : IDisposable
 	{
-		[SetUp] public void Setup() => Application.Current = new MockApplication();
-		[TearDown] public void TearDown() => Application.Current = null;
+		public Tests() => Application.Current = new MockApplication();
+		public void Dispose() => Application.Current = null;
 
-		[Test]
-		public void Datetime([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void Datetime(XamlInflator inflator)
 		{
 			var layout = new BuiltInConversions(inflator);
 
-			Assert.AreEqual(new DateTime(2015, 01, 16), layout.datetime0.Date);
-			Assert.AreEqual(new DateTime(2015, 01, 16), layout.datetime1.Date);
+			Assert.Equal(new DateTime(2015, 01, 16), layout.datetime0.Date);
+			Assert.Equal(new DateTime(2015, 01, 16), layout.datetime1.Date);
 		}
 
-		[Test]
-		public void String([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void String(XamlInflator inflator)
 		{
 			var layout = new BuiltInConversions(inflator);
 
-			Assert.AreEqual("foobar", layout.label0.Text);
-			Assert.AreEqual("foobar", layout.label1.Text);
+			Assert.Equal("foobar", layout.label0.Text);
+			Assert.Equal("foobar", layout.label1.Text);
 
 			//Issue #2122, implicit content property not trimmed
-			Assert.AreEqual("foobar", layout.label2.Text);
+			Assert.Equal("foobar", layout.label2.Text);
 		}
 	}
 }

@@ -1,23 +1,29 @@
+using System;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 [assembly: XmlnsDefinition("http://schemas.microsoft.com/dotnet/maui/global", "http://schemas.microsoft.com/dotnet/2021/maui")]
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class XmlnsAggregattion : ContentPage
 {
 	public XmlnsAggregattion() => InitializeComponent();
-	[SetUp] public void Setup() => AppInfo.SetCurrent(new MockAppInfo());
-	[TearDown] public void TearDown() => AppInfo.SetCurrent(null);
 
-	[Test]
-	public void XamlWithAggregatedXmlns([Values] XamlInflator inflator)
+	[Collection("Xaml Inflation")]
+	public class Tests : IDisposable
 	{
-		var layout = new XmlnsAggregattion(inflator);
-		Assert.That(layout.label.Text, Is.EqualTo("Welcome to .NET MAUI!"));
+		public Tests() => AppInfo.SetCurrent(new MockAppInfo());
+		public void Dispose() => AppInfo.SetCurrent(null);
+
+		[Theory]
+		[XamlInflatorData]
+		internal void XamlWithAggregatedXmlns(XamlInflator inflator)
+		{
+			var layout = new XmlnsAggregattion(inflator);
+			Assert.Equal("Welcome to .NET MAUI!", layout.label.Text);
+		}
 	}
 }

@@ -1,15 +1,19 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class GlobalXmlnsWithDataTemplate : ContentPage
 {
 	public GlobalXmlnsWithDataTemplate() => InitializeComponent();
 
-	[Test]
-	public void GlobalXmlnsWithDataTemplateTest([Values] XamlInflator inflator)
+	[Collection("Xaml Inflation")]
+	public class Tests
 	{
-		var page = new GlobalXmlnsWithDataTemplate(inflator);
+		[Theory]
+		[XamlInflatorData]
+		internal void GlobalXmlnsWithDataTemplateTest(XamlInflator inflator)
+		{
+			var page = new GlobalXmlnsWithDataTemplate(inflator);
+		}
 	}
 }

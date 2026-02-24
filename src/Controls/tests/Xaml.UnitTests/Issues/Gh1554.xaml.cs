@@ -1,21 +1,21 @@
 using System.Linq;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh1554
 {
 	public Gh1554() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void NestedRDAreOnlyProcessedOnce([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void NestedRDAreOnlyProcessedOnce(XamlInflator inflator)
 		{
 			var layout = new Gh1554(inflator);
-			Assert.That(layout.Resources.MergedDictionaries.First().First().Key, Is.EqualTo("label0"));
+			Assert.Equal("label0", layout.Resources.MergedDictionaries.First().First().Key);
 		}
 	}
 }

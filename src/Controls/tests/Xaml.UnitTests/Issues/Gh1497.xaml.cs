@@ -1,4 +1,4 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -10,7 +10,6 @@ sealed class Gh1497EntryValidationBehavior<TModel> : Gh1497BaseValidationBehavio
 {
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh1497 : ContentPage
 {
 	public Gh1497()
@@ -18,14 +17,15 @@ public partial class Gh1497 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void GenericsIssue([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void GenericsIssue(XamlInflator inflator)
 		{
 			var layout = new Gh1497(inflator);
-			Assert.That(layout.entry.Behaviors[0], Is.TypeOf(typeof(Gh1497EntryValidationBehavior<Entry>)));
+			Assert.IsType<Gh1497EntryValidationBehavior<Entry>>(layout.entry.Behaviors[0]);
 		}
 	}
 }

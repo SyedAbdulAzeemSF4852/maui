@@ -1,4 +1,4 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -7,22 +7,22 @@ public class Gh4103VM
 	public string SomeNullableValue { get; set; } = "initial";
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh4103 : ContentPage
 {
 	public Gh4103() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void CompiledBindingsTargetNullValue([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void CompiledBindingsTargetNullValue(XamlInflator inflator)
 		{
 			var layout = new Gh4103(inflator) { BindingContext = new Gh4103VM() };
-			Assert.That(layout.label.Text, Is.EqualTo("initial"));
+			Assert.Equal("initial", layout.label.Text);
 
 			layout.BindingContext = new Gh4103VM { SomeNullableValue = null };
-			Assert.That(layout.label.Text, Is.EqualTo("target null"));
+			Assert.Equal("target null", layout.label.Text);
 		}
 	}
 }

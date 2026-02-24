@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -14,7 +14,6 @@ public class Bz43733Rd : ResourceDictionary
 	}
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz43733 : ContentPage
 {
 	public Bz43733()
@@ -22,11 +21,12 @@ public partial class Bz43733 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void ThrowOnMissingDictionary([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ThrowOnMissingDictionary(XamlInflator inflator)
 		{
 			Application.Current = new MockApplication
 			{
@@ -36,7 +36,7 @@ public partial class Bz43733 : ContentPage
 				}
 			};
 			var p = new Bz43733(inflator);
-			Assert.AreEqual("Foo", p.label.Text);
+			Assert.Equal("Foo", p.label.Text);
 		}
 	}
 }

@@ -1,37 +1,34 @@
+using System;
 using Microsoft.Maui.Controls.Core.UnitTests;
 using Microsoft.Maui.Devices;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh4319 : ContentPage
 {
 	public Gh4319() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests : IDisposable
 	{
 		MockDeviceInfo mockDeviceInfo;
 
-		[SetUp] public void Setup() => DeviceInfo.SetCurrent(mockDeviceInfo = new MockDeviceInfo());
+		public Tests() => DeviceInfo.SetCurrent(mockDeviceInfo = new MockDeviceInfo());
 
-		[TearDown] public void TearDown() => DeviceInfo.SetCurrent(null);
+		public void Dispose() => DeviceInfo.SetCurrent(null);
 
-		[Test]
-#if FIXME_BEFORE_PUBLIC_RELEASE
-		public void OnPlatformMarkupAndNamedSizes([Values(XamlInflator.XamlC, XamlInflator.Runtime)] XamlInflator inflator)
-#else
-		public void OnPlatformMarkupAndNamedSizes([Values] XamlInflator inflator)
-#endif
+		[Theory]
+		[XamlInflatorData]
+		internal void OnPlatformMarkupAndNamedSizes(XamlInflator inflator)
 		{
 			mockDeviceInfo.Platform = DevicePlatform.iOS;
 			var layout = new Gh4319(inflator);
-			Assert.That(layout.label.FontSize, Is.EqualTo(4d));
+			Assert.Equal(4d, layout.label.FontSize);
 
 			mockDeviceInfo.Platform = DevicePlatform.Android;
 			layout = new Gh4319(inflator);
-			Assert.That(layout.label.FontSize, Is.EqualTo(8d));
+			Assert.Equal(8d, layout.label.FontSize);
 		}
 	}
 }

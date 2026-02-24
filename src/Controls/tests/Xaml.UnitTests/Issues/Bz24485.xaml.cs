@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using Microsoft.Maui.Controls;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests
 {
@@ -26,7 +26,6 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 		}
 	}
 
-	[XamlProcessing(XamlInflator.Default, true)]
 	public partial class Bz24485 : ContentPage
 	{
 		public Bz24485()
@@ -34,15 +33,16 @@ namespace Microsoft.Maui.Controls.Xaml.UnitTests
 			InitializeComponent();
 		}
 
-		[TestFixture]
-		class Tests
+		[Collection("Issue")]
+		public class Tests
 		{
-			[Test]
-			public void BindingContextWithConverter([Values] XamlInflator inflator)
+			[Theory]
+			[XamlInflatorData]
+			internal void BindingContextWithConverter(XamlInflator inflator)
 			{
 				var layout = new Bz24485(inflator);
 				layout.BindingContext = new { Data1 = new object() };
-				Assert.Pass();
+				// Test passes if no exception is thrown
 			}
 		}
 	}

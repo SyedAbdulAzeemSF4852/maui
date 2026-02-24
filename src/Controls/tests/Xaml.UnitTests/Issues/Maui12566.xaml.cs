@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -12,7 +12,6 @@ public class Maui12566View : ContentView
 #pragma warning restore 67
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Maui12566 : ContentPage
 {
 	public Maui12566() => InitializeComponent();
@@ -21,13 +20,15 @@ public partial class Maui12566 : ContentPage
 	{
 	}
 
-	class Tests
+	[Collection("Issue")]
+	public class Tests : IDisposable
 	{
-		[SetUp] public void Setup() => AppInfo.SetCurrent(new MockAppInfo());
-		[TearDown] public void TearDown() => AppInfo.SetCurrent(null);
+		public Tests() => AppInfo.SetCurrent(new MockAppInfo());
+		public void Dispose() => AppInfo.SetCurrent(null);
 
-		[Test]
-		public void AccessInternalEvent([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void AccessInternalEvent(XamlInflator inflator)
 		{
 			//shouldn't throw
 			new Maui12566(inflator);

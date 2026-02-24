@@ -22,8 +22,8 @@ namespace Microsoft.Maui.Controls
 			}
 
 			_layout = (Element)layout;
-			_layout.ChildAdded += ChildAdded;
-			_layout.ChildRemoved += ChildRemoved;
+			_layout.DescendantAdded += DescendantAdded;
+			_layout.DescendantRemoved += DescendantRemoved;
 
 			if (!string.IsNullOrEmpty(_groupName))
 			{
@@ -50,9 +50,9 @@ namespace Microsoft.Maui.Controls
 			_layout.SetValue(RadioButtonGroup.SelectedValueProperty, radioButton.Value);
 		}
 
-		void ChildAdded(object sender, ElementEventArgs e)
+		void DescendantAdded(object sender, ElementEventArgs e)
 		{
-			if (string.IsNullOrEmpty(_groupName))
+			if (string.IsNullOrEmpty(_groupName) || _layout == null)
 			{
 				return;
 			}
@@ -61,38 +61,15 @@ namespace Microsoft.Maui.Controls
 			{
 				AddRadioButton(radioButton);
 			}
-			else
-			{
-				foreach (var element in e.Element.Descendants())
-				{
-					if (element is RadioButton childRadioButton)
-					{
-						AddRadioButton(childRadioButton);
-					}
-				}
-			}
 		}
 
-		void ChildRemoved(object sender, ElementEventArgs e)
+		void DescendantRemoved(object sender, ElementEventArgs e)
 		{
 			if (e.Element is RadioButton radioButton)
 			{
 				if (groupControllers.TryGetValue(radioButton, out _))
 				{
 					groupControllers.Remove(radioButton);
-				}
-			}
-			else
-			{
-				foreach (var element in e.Element.Descendants())
-				{
-					if (element is RadioButton radioButton1)
-					{
-						if (groupControllers.TryGetValue(radioButton1, out _))
-						{
-							groupControllers.Remove(radioButton1);
-						}
-					}
 				}
 			}
 		}
@@ -162,15 +139,31 @@ namespace Microsoft.Maui.Controls
 
 		void SetSelectedValue(object radioButtonValue)
 		{
+			if (object.Equals(_selectedValue, radioButtonValue))
+			{
+				return;
+			}
+
 			_selectedValue = radioButtonValue;
 
-			if (radioButtonValue != null)
+			foreach (var child in _layout.Descendants())
 			{
-				foreach (var child in _layout.Descendants())
+				if (child is RadioButton radioButton && radioButton.GroupName == _groupName)
 				{
-					if (child is RadioButton radioButton && radioButton.GroupName == _groupName && radioButton.Value is not null && radioButton.Value.Equals(radioButtonValue))
+					if (radioButtonValue is not null)
 					{
-						radioButton.SetValue(RadioButton.IsCheckedProperty, true, specificity: SetterSpecificity.FromHandler);
+						if (radioButton.Value is not null && radioButton.Value.Equals(radioButtonValue))
+						{
+							radioButton.SetValue(RadioButton.IsCheckedProperty, true, specificity: SetterSpecificity.FromHandler);
+						}
+					}
+					else
+					{
+						// Setting null - uncheck the selected radio button in the group
+						if (radioButton.IsChecked)
+						{
+							radioButton.SetValue(RadioButton.IsCheckedProperty, false, specificity: SetterSpecificity.FromHandler);
+						}
 					}
 				}
 			}

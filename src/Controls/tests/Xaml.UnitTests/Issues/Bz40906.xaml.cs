@@ -2,11 +2,10 @@ using System;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz40906 : ContentPage
 {
 	public Bz40906()
@@ -14,15 +13,16 @@ public partial class Bz40906 : ContentPage
 		InitializeComponent();
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void ParsingCDATA([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ParsingCDATA(XamlInflator inflator)
 		{
 			var page = new Bz40906(inflator);
-			Assert.AreEqual("Foo", page.label0.Text);
-			Assert.AreEqual("FooBar>><<", page.label1.Text);
+			Assert.Equal("Foo", page.label0.Text);
+			Assert.Equal("FooBar>><<", page.label1.Text);
 		}
 	}
 }

@@ -1,12 +1,22 @@
+#if ANDROID
+using Android.Views;
+#endif
+
 namespace Maui.Controls.Sample.Issues;
 
-[Issue(IssueTracker.Github, 28986, "Test SafeArea ScrollView for per-edge safe area control", PlatformAffected.All, issueTestNumber: 4)]
+[Issue(IssueTracker.Github, 28986, "Test SafeArea ScrollView for per-edge safe area control", PlatformAffected.Android | PlatformAffected.iOS, issueTestNumber: 4)]
 public partial class Issue28986_ScrollView : ContentPage
 {
 	public Issue28986_ScrollView()
 	{
 		InitializeComponent();
 		UpdateCurrentSettingsLabel();
+
+#if ANDROID
+		// Set SoftInput.AdjustNothing - we have full control over insets (iOS-like behavior)
+		var window = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity?.Window;
+		window?.SetSoftInputMode(SoftInput.AdjustNothing | SoftInput.StateUnspecified);
+#endif
 	}
 
 	private void OnScrollViewSetNoneClicked(object sender, EventArgs e)
@@ -43,26 +53,26 @@ public partial class Issue28986_ScrollView : ContentPage
 	private string GetSafeAreaEdgesDescription(SafeAreaEdges edges)
 	{
 		// Check for common patterns
-		if (edges.Left == SafeAreaRegions.None && edges.Top == SafeAreaRegions.None && 
-		    edges.Right == SafeAreaRegions.None && edges.Bottom == SafeAreaRegions.None)
+		if (edges.Left == SafeAreaRegions.None && edges.Top == SafeAreaRegions.None &&
+			edges.Right == SafeAreaRegions.None && edges.Bottom == SafeAreaRegions.None)
 		{
 			return "None (Edge-to-edge)";
 		}
-		
-		if (edges.Left == SafeAreaRegions.All && edges.Top == SafeAreaRegions.All && 
-		    edges.Right == SafeAreaRegions.All && edges.Bottom == SafeAreaRegions.All)
+
+		if (edges.Left == SafeAreaRegions.All && edges.Top == SafeAreaRegions.All &&
+			edges.Right == SafeAreaRegions.All && edges.Bottom == SafeAreaRegions.All)
 		{
 			return "All (Full safe area)";
 		}
-		
-		if (edges.Left == SafeAreaRegions.Container && edges.Top == SafeAreaRegions.Container && 
-		    edges.Right == SafeAreaRegions.Container && edges.Bottom == SafeAreaRegions.Container)
+
+		if (edges.Left == SafeAreaRegions.Container && edges.Top == SafeAreaRegions.Container &&
+			edges.Right == SafeAreaRegions.Container && edges.Bottom == SafeAreaRegions.Container)
 		{
 			return "Container (Respect notches/bars)";
 		}
 
-		if (edges.Left == SafeAreaRegions.SoftInput && edges.Top == SafeAreaRegions.SoftInput && 
-		    edges.Right == SafeAreaRegions.SoftInput && edges.Bottom == SafeAreaRegions.SoftInput)
+		if (edges.Left == SafeAreaRegions.SoftInput && edges.Top == SafeAreaRegions.SoftInput &&
+			edges.Right == SafeAreaRegions.SoftInput && edges.Bottom == SafeAreaRegions.SoftInput)
 		{
 			return "SoftInput (Avoid keyboard only)";
 		}

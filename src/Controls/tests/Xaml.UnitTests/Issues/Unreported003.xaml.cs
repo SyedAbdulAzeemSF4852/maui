@@ -1,16 +1,17 @@
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Unreported003 : ContentPage
 {
 	public Unreported003() => InitializeComponent();
 
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void AllowCtorArgsForValueTypes([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void AllowCtorArgsForValueTypes(XamlInflator inflator)
 		{
 			var page = new Unreported003(inflator);
 		}

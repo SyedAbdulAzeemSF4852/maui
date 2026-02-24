@@ -1,5 +1,5 @@
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
@@ -8,23 +8,23 @@ public class ColorConverterVM
 	public string ButtonBackground => "#fc87ad";
 }
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class ColorConverter : ContentPage
 {
 
 	public ColorConverter() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Xaml Inflation")]
 	public class Tests
 	{
-		[Test]
-		public void StringsAreValidAsColor([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void StringsAreValidAsColor(XamlInflator inflator)
 		{
 			var page = new ColorConverter(inflator);
 			page.BindingContext = new ColorConverterVM();
 
 			var expected = Color.FromArgb("#fc87ad");
-			Assert.AreEqual(expected, page.Button0.BackgroundColor);
+			Assert.Equal(expected, page.Button0.BackgroundColor);
 		}
 	}
 }

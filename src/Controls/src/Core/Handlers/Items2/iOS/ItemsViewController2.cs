@@ -75,7 +75,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			if (_initialized)
 			{
 				// Reload the data so the currently visible cells get laid out according to the new layout
-				CollectionView.ReloadData();
+				ReloadData();
 			}
 		}
 
@@ -119,6 +119,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			{
 				TemplatedCell2.ScrollDirection = ScrollDirection;
 
+				// Ensure this cell is treated as a regular item cell (not a supplementary view)
+				TemplatedCell2.isSupplementaryView = false;
 				TemplatedCell2.Bind(ItemsView.ItemTemplate, ItemsSource[indexpathAdjusted], ItemsView);
 			}
 			else if (cell is DefaultCell2 DefaultCell2)
@@ -241,11 +243,22 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			}
 		}
 
+		internal void ReloadData()
+		{
+			// Reset cached first item size when reloading data
+			if (ItemsView.Handler is CollectionViewHandler2 handler)
+			{
+				handler.SetCachedFirstItemSize(CoreGraphics.CGSize.Empty);
+			}
+
+			CollectionView.ReloadData();
+		}
+
 		internal void DisposeItemsSource()
 		{
 			ItemsSource?.Dispose();
 			ItemsSource = new Items.EmptySource();
-			CollectionView.ReloadData();
+			ReloadData();
 		}
 
 		void EnsureLayoutInitialized()
@@ -280,7 +293,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			ItemsSource?.Dispose();
 			ItemsSource = CreateItemsViewSource();
 
-			CollectionView.ReloadData();
+			ReloadData();
 			CollectionView.CollectionViewLayout.InvalidateLayout();
 
 			(ItemsView as IView)?.InvalidateMeasure();
@@ -288,7 +301,33 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 
 		public virtual void UpdateFlowDirection()
 		{
-			CollectionView.UpdateFlowDirection(ItemsView);
+			if (ItemsView.Handler.PlatformView is UIView itemsView)
+			{
+				itemsView.UpdateFlowDirection(ItemsView);
+				if (ItemsView.ItemTemplate is not null)
+				{
+					foreach (var child in ItemsView.LogicalChildrenInternal)
+					{
+						if (child is VisualElement ve && ve.Handler?.PlatformView is UIView view)
+						{
+							view.UpdateFlowDirection(ve);
+						}
+					}
+				}
+				else
+				{
+					// If we don't have an ItemTemplate, then we need to update the default cell's flow direction
+					if (CollectionView?.VisibleCells is UICollectionViewCell[] visibleCells)
+					{
+						foreach (var cell in visibleCells.OfType<DefaultCell2>())
+						{
+							cell.Label.UpdateFlowDirection(ItemsView);
+						}
+					}
+				}
+	
+				CollectionView.UpdateFlowDirection(ItemsView);
+			}
 
 			if (_emptyViewDisplayed)
 			{
@@ -425,6 +464,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			}
 
 			return CollectionView.CollectionViewLayout.CollectionViewContentSize.ToSize();
+		}
+
+		internal UICollectionViewScrollDirection GetScrollDirection()
+		{
+			return ScrollDirection;
 		}
 
 		internal void UpdateView(object view, DataTemplate viewTemplate, ref UIView uiView, ref VisualElement formsElement)
@@ -576,8 +620,15 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 
 			if (_emptyViewFormsElement != null && ((IElementController)ItemsView).LogicalChildren.IndexOf(_emptyViewFormsElement) != -1)
 			{
-				_emptyViewFormsElement.Measure(frame.Width, frame.Height);
-				_emptyViewFormsElement.Arrange(frame.ToRectangle());
+				if (frame.Width > 0 && frame.Height > 0)
+				{
+					_emptyViewFormsElement.Measure(frame.Width, frame.Height);
+
+					// Arrange in the native container's local coordinate space (0,0).
+					// The native container (_emptyUIView) is already positioned correctly by iOS,
+					// so the MAUI element just needs to fill its container without additional offset.
+					_emptyViewFormsElement.Arrange(new Rect(0, 0, frame.Width, frame.Height));
+				}
 			}
 
 			_emptyUIView.Frame = frame;

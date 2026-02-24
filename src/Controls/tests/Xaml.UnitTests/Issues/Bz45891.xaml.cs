@@ -1,12 +1,12 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Maui.Controls.Core.UnitTests;
 using Microsoft.Maui.Devices;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Bz45891 : ContentPage
 {
 	public Bz45891() => InitializeComponent();
@@ -20,21 +20,22 @@ public partial class Bz45891 : ContentPage
 		set { SetValue(ListProperty, value); }
 	}
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests : IDisposable
 	{
 		MockDeviceInfo mockDeviceInfo;
 
-		[SetUp] public void Setup() => DeviceInfo.SetCurrent(mockDeviceInfo = new MockDeviceInfo());
+		public Tests() => DeviceInfo.SetCurrent(mockDeviceInfo = new MockDeviceInfo());
 
-		[TearDown] public void TearDown() => DeviceInfo.SetCurrent(null);
+		public void Dispose() => DeviceInfo.SetCurrent(null);
 
-		[Test]
-		public void LookForInheritanceOnOpImplicit([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void LookForInheritanceOnOpImplicit(XamlInflator inflator)
 		{
 			mockDeviceInfo.Platform = DevicePlatform.iOS;
 			var p = new Bz45891(inflator);
-			Assert.AreEqual("Foo", p.List.First());
+			Assert.Equal("Foo", p.List.First());
 		}
 	}
 }

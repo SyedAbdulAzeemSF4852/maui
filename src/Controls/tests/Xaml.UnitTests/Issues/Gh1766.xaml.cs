@@ -1,22 +1,22 @@
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Gh1766 : ContentPage
 {
 	public Gh1766() => InitializeComponent();
 
-	[TestFixture]
-	class Tests
+	[Collection("Issue")]
+	public class Tests
 	{
-		[Test]
-		public void CSSPropertiesNotInerited([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void CSSPropertiesNotInerited(XamlInflator inflator)
 		{
 			var layout = new Gh1766(inflator);
-			Assert.That(layout.stack.BackgroundColor, Is.EqualTo(Colors.Pink));
-			Assert.That(layout.entry.BackgroundColor, Is.EqualTo(VisualElement.BackgroundColorProperty.DefaultValue));
+			Assert.Equal(Colors.Pink, layout.stack.BackgroundColor);
+			Assert.Equal(VisualElement.BackgroundColorProperty.DefaultValue, layout.entry.BackgroundColor);
 		}
 	}
 }

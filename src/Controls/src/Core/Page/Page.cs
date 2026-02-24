@@ -350,7 +350,7 @@ namespace Microsoft.Maui.Controls
 		/// <inheritdoc cref="DisplayAlertAsync(string, string, string, string, FlowDirection)"/>
 		[Obsolete("Use DisplayAlertAsync instead")]
 		public Task<bool> DisplayAlert(string title, string message, string accept, string cancel, FlowDirection flowDirection)
-			=> DisplayAlertAsync(title, message, accept, null, flowDirection);
+			=> DisplayAlertAsync(title, message, accept, cancel, flowDirection);
 
 		/// <inheritdoc cref="DisplayAlertAsync(string, string, string, string, FlowDirection)"/>
 		public Task DisplayAlertAsync(string title, string message, string cancel)
@@ -511,6 +511,12 @@ namespace Microsoft.Maui.Controls
 
 			if (TitleView != null)
 				SetInheritedBindingContext(TitleView, BindingContext);
+
+			if (Shell.GetBackButtonBehavior(this) is { } buttonBehavior)
+				SetInheritedBindingContext(buttonBehavior, BindingContext);
+
+			if (Shell.GetSearchHandler(this) is { } searchHandler)
+				SetInheritedBindingContext(searchHandler, BindingContext);
 		}
 
 

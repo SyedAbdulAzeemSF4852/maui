@@ -20,7 +20,9 @@ using Microsoft.Maui.Graphics;
 
 namespace Microsoft.Maui.Controls
 {
-	/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="Type[@FullName='Microsoft.Maui.Controls.Shell']/Docs/*" />
+	/// <summary>
+	/// The main navigation container for .NET MAUI apps, providing flyout and tab-based navigation.
+	/// </summary>
 	[ContentProperty(nameof(Items))]
 	[DebuggerTypeProxy(typeof(ShellDebugView))]
 	public partial class Shell : Page, IShellController, IPropertyPropagationController, IPageContainer<Page>, IFlyoutView
@@ -193,8 +195,40 @@ namespace Microsoft.Maui.Controls
 		/// <param name="itemTemplate">The <see cref = "DataTemplate" /> applied to Item objects.</param>
 		public static void SetItemTemplate(BindableObject obj, DataTemplate itemTemplate) => obj.SetValue(ItemTemplateProperty, itemTemplate);
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GetBackButtonBehavior']/Docs/*" />
+		/// <summary>
+		/// Gets the <see cref="BackButtonBehavior"/> for the specified <paramref name="obj"/>.
+		/// </summary>
+		/// <param name="obj">The object from which to get the back button behavior.</param>
+		/// <returns>The back button behavior for the object.</returns>
 		public static BackButtonBehavior GetBackButtonBehavior(BindableObject obj) => (BackButtonBehavior)obj.GetValue(BackButtonBehaviorProperty);
+
+		/// <summary>
+		/// Gets the BackButtonBehavior for the given page, with fallback to Shell if not set on the page.
+		/// </summary>
+		internal static BackButtonBehavior GetEffectiveBackButtonBehavior(BindableObject page)
+		{
+			if (page == null)
+				return null;
+
+			// First check if the page has its own BackButtonBehavior
+			var behavior = GetBackButtonBehavior(page);
+			if (behavior != null)
+				return behavior;
+
+			// Fallback: check if the Shell itself has a BackButtonBehavior
+			if (page is Element element)
+			{
+				var shell = element.FindParentOfType<Shell>();
+				if (shell != null)
+				{
+					behavior = GetBackButtonBehavior(shell);
+					if (behavior != null)
+						return behavior;
+				}
+			}
+
+			return null;
+		}
 
 		/// <summary>
 		/// Sets the back button behavior when the given <paramref name="obj"/> is presented.
@@ -972,7 +1006,9 @@ namespace Microsoft.Maui.Controls
 			remove { ((ShellItemCollection)Items).VisibleItemsChanged -= value; }
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='Current']/Docs/*" />
+		/// <summary>
+		/// Gets the current <see cref="Shell"/> instance from the active application window.
+		/// </summary>
 		public static Shell Current
 		{
 			get
@@ -1026,30 +1062,39 @@ namespace Microsoft.Maui.Controls
 		}
 
 		internal ShellNavigationManager NavigationManager => _navigationManager;
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GoToAsync'][1]/Docs/*" />
+
+		/// <summary>Asynchronously navigates to the specified <paramref name="state"/>.</summary>
+		/// <param name="state">The shell navigation state to navigate to.</param>
+		/// <returns>A task that represents the asynchronous navigation operation.</returns>
 		public Task GoToAsync(ShellNavigationState state)
 		{
 			return _navigationManager.GoToAsync(state, null, false);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GoToAsync'][2]/Docs/*" />
+		/// <summary>Asynchronously navigates to the specified <paramref name="state"/> with animation control.</summary>
+		/// <param name="state">The shell navigation state to navigate to.</param>
+		/// <param name="animate">Whether to animate the navigation transition.</param>
+		/// <returns>A task that represents the asynchronous navigation operation.</returns>
 		public Task GoToAsync(ShellNavigationState state, bool animate)
 		{
 			return _navigationManager.GoToAsync(state, animate, false);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GoToAsync'][1]/Docs/*" />
-#pragma warning disable CS1573 // Parameter has no matching param tag in the XML comment (but other parameters do)
+		/// <summary>Asynchronously navigates to the specified state with optional parameters.</summary>
+		/// <param name="state">The shell navigation state to navigate to.</param>
+		/// <param name="parameters">Optional parameters to pass to the destination page.</param>
+		/// <returns>A task that represents the asynchronous navigation operation.</returns>
 		public Task GoToAsync(ShellNavigationState state, IDictionary<string, object> parameters)
-#pragma warning restore CS1573 // Parameter has no matching param tag in the XML comment (but other parameters do)
 		{
 			return _navigationManager.GoToAsync(state, null, false, parameters: new ShellRouteParameters(parameters));
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='GoToAsync'][2]/Docs/*" />
-#pragma warning disable CS1573 // Parameter has no matching param tag in the XML comment (but other parameters do)
+		/// <summary>Asynchronously navigates to the specified state with animation control and optional parameters.</summary>
+		/// <param name="state">The shell navigation state to navigate to.</param>
+		/// <param name="animate">Whether to animate the navigation transition.</param>
+		/// <param name="parameters">Optional parameters to pass to the destination page.</param>
+		/// <returns>A task that represents the asynchronous navigation operation.</returns>
 		public Task GoToAsync(ShellNavigationState state, bool animate, IDictionary<string, object> parameters)
-#pragma warning restore CS1573 // Parameter has no matching param tag in the XML comment (but other parameters do)
 		{
 			return _navigationManager.GoToAsync(state, animate, false, parameters: new ShellRouteParameters(parameters));
 		}
@@ -1176,7 +1221,7 @@ namespace Microsoft.Maui.Controls
 		ShellFlyoutItemsManager _flyoutManager;
 		Page _previousPage;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='.ctor']/Docs/*" />
+		/// <summary>Initializes a new instance of the <see cref="Shell"/> class.</summary>
 		public Shell()
 		{
 			Toolbar = new ShellToolbar(this);
@@ -1334,7 +1379,7 @@ namespace Microsoft.Maui.Controls
 		internal ShellContent CurrentContent => CurrentItem?.CurrentItem?.CurrentItem;
 		internal ShellSection CurrentSection => CurrentItem?.CurrentItem;
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='CurrentState']/Docs/*" />
+		/// <summary>Gets the current navigation state of the Shell. This is a bindable property.</summary>
 		public ShellNavigationState CurrentState => (ShellNavigationState)GetValue(CurrentStateProperty);
 
 		/// <summary>
@@ -1467,7 +1512,7 @@ namespace Microsoft.Maui.Controls
 			set => SetValue(FlyoutIsPresentedProperty, value);
 		}
 
-		/// <include file="../../../docs/Microsoft.Maui.Controls/Shell.xml" path="//Member[@MemberName='Items']/Docs/*" />
+		/// <summary>Gets the collection of <see cref="ShellItem"/> objects in the Shell. This is a bindable property.</summary>
 		public IList<ShellItem> Items => (IList<ShellItem>)GetValue(ItemsProperty);
 
 		/// <summary>
@@ -1539,7 +1584,7 @@ namespace Microsoft.Maui.Controls
 		protected override bool OnBackButtonPressed()
 		{
 #if WINDOWS || !PLATFORM
-			var backButtonBehavior = GetBackButtonBehavior(GetVisiblePage());
+			var backButtonBehavior = GetEffectiveBackButtonBehavior(GetVisiblePage());
 			if (backButtonBehavior != null)
 			{
 				var command = backButtonBehavior.GetPropertyIfSet<ICommand>(BackButtonBehavior.CommandProperty, null);
@@ -1590,7 +1635,7 @@ namespace Microsoft.Maui.Controls
 			if (_previousPage != null)
 				_previousPage.PropertyChanged -= OnCurrentPagePropertyChanged;
 
-			NavigationType navigationType = NavigationType.PageSwap;
+			NavigationType navigationType = NavigationType.Replace;
 
 			switch (args.Source)
 			{
@@ -1598,13 +1643,13 @@ namespace Microsoft.Maui.Controls
 					navigationType = NavigationType.Pop;
 					break;
 				case ShellNavigationSource.ShellItemChanged:
-					navigationType = NavigationType.PageSwap;
+					navigationType = NavigationType.Replace;
 					break;
 				case ShellNavigationSource.ShellSectionChanged:
-					navigationType = NavigationType.PageSwap;
+					navigationType = NavigationType.Replace;
 					break;
 				case ShellNavigationSource.ShellContentChanged:
-					navigationType = NavigationType.PageSwap;
+					navigationType = NavigationType.Replace;
 					break;
 				case ShellNavigationSource.Push:
 					navigationType = NavigationType.Push;
@@ -1618,7 +1663,7 @@ namespace Microsoft.Maui.Controls
 			}
 
 			_previousPage?.SendNavigatedFrom(new NavigatedFromEventArgs(CurrentPage, navigationType));
-			CurrentPage?.SendNavigatedTo(new NavigatedToEventArgs(_previousPage));
+			CurrentPage?.SendNavigatedTo(new NavigatedToEventArgs(_previousPage, navigationType));
 			_previousPage = null;
 
 			if (CurrentPage != null)
@@ -1644,8 +1689,35 @@ namespace Microsoft.Maui.Controls
 
 			if (!args.Cancelled)
 			{
+				NavigationType navigationType = NavigationType.Replace;
+
+				switch (args.Source)
+				{
+					case ShellNavigationSource.Pop:
+						navigationType = NavigationType.Pop;
+						break;
+					case ShellNavigationSource.ShellItemChanged:
+						navigationType = NavigationType.Replace;
+						break;
+					case ShellNavigationSource.ShellSectionChanged:
+						navigationType = NavigationType.Replace;
+						break;
+					case ShellNavigationSource.ShellContentChanged:
+						navigationType = NavigationType.Replace;
+						break;
+					case ShellNavigationSource.Push:
+						navigationType = NavigationType.Push;
+						break;
+					case ShellNavigationSource.PopToRoot:
+						navigationType = NavigationType.PopToRoot;
+						break;
+					case ShellNavigationSource.Insert:
+						navigationType = NavigationType.Insert;
+						break;
+				}
+
 				_previousPage = CurrentPage;
-				CurrentPage?.SendNavigatingFrom(new NavigatingFromEventArgs());
+				CurrentPage?.SendNavigatingFrom(new NavigatingFromEventArgs(CurrentPage, navigationType));
 			}
 		}
 
@@ -1684,6 +1756,17 @@ namespace Microsoft.Maui.Controls
 
 			shell.ShellController.AppearanceChanged(shell, false);
 			shell.ShellController.UpdateCurrentState(ShellNavigationSource.ShellItemChanged);
+
+			// If the new ShellItem is a FlyoutItem or a ShellGroupItem, we need to update the QueryAttributes
+			var existing = (ShellRouteParameters)shell.CurrentContent?.GetValue(ShellContent.QueryAttributesProperty);
+			bool isRelevantShellItem = shell.CurrentItem is FlyoutItem || shell.CurrentItem is ShellGroupItem;
+			bool isNewValueDifferent = oldValue is not null && newValue is not null && existing is null;
+
+			if (isNewValueDifferent && isRelevantShellItem)
+			{
+				ShellContent currentShellContent = shell.CurrentItem.CurrentItem?.CurrentItem;
+				currentShellContent?.SetValue(ShellContent.QueryAttributesProperty, new ShellRouteParameters());
+			}
 
 			if (shell.CurrentItem?.CurrentItem != null)
 				shell.ShellController.AppearanceChanged(shell.CurrentItem.CurrentItem, false);

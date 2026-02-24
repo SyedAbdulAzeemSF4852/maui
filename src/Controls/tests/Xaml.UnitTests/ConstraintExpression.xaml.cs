@@ -2,20 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using Microsoft.Maui.Controls.Compatibility;
 using Microsoft.Maui.Graphics;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class ConstraintExpression : ContentPage
 {
 	public ConstraintExpression() => InitializeComponent();
 
-	[TestFixture]
+	[Collection("Xaml Inflation")]
 	public class Tests
 	{
-		[Test]
-		public void ConstantConstraint([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ConstantConstraint(XamlInflator inflator)
 		{
 			if (inflator == XamlInflator.SourceGen)
 			{
@@ -25,22 +25,24 @@ public partial class ConstraintExpression : ContentPage
 			var label = layout.constantConstraint;
 			var constraint = Microsoft.Maui.Controls.Compatibility.RelativeLayout.GetWidthConstraint(label);
 			Assert.NotNull(constraint);
-			Assert.AreEqual(42, constraint.Compute(null));
+			Assert.Equal(42, constraint.Compute(null));
 		}
 
-		[Test]
-		public void ConstraintRelativeToParent([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ConstraintRelativeToParent(XamlInflator inflator)
 		{
 			var layout = new ConstraintExpression(inflator);
 			layout.relativeLayout.Layout(new Rect(0, 0, 200, 200));
 			var label = layout.constraintRelativeToParent;
 			var constraint = Microsoft.Maui.Controls.Compatibility.RelativeLayout.GetWidthConstraint(label);
 			Assert.NotNull(constraint);
-			Assert.AreEqual(102, constraint.Compute(layout.relativeLayout));
+			Assert.Equal(102, constraint.Compute(layout.relativeLayout));
 		}
 
-		[Test]
-		public void ContraintRelativeToView([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void ContraintRelativeToView(XamlInflator inflator)
 		{
 			var layout = new ConstraintExpression(inflator)
 			{
@@ -52,7 +54,7 @@ public partial class ConstraintExpression : ContentPage
 			var label = layout.constraintRelativeToView;
 			var constraint = Microsoft.Maui.Controls.Compatibility.RelativeLayout.GetWidthConstraint(label);
 			Assert.NotNull(constraint);
-			Assert.AreEqual(97, constraint.Compute(layout.relativeLayout));
+			Assert.Equal(97, constraint.Compute(layout.relativeLayout));
 		}
 	}
 }

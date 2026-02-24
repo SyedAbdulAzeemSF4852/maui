@@ -1,22 +1,23 @@
-﻿using Microsoft.Maui.ApplicationModel;
+using System;
+using Microsoft.Maui.ApplicationModel;
 using Microsoft.Maui.Controls.Core.UnitTests;
-using NUnit.Framework;
+using Xunit;
 
 namespace Microsoft.Maui.Controls.Xaml.UnitTests;
 
-[XamlProcessing(XamlInflator.Default, true)]
 public partial class Maui6367
 {
 	public Maui6367() => InitializeComponent();
 
-	[TestFixture]
-	class Test
+	[Collection("Issue")]
+	public class Test : IDisposable
 	{
-		[SetUp] public void Setup() => AppInfo.SetCurrent(new MockAppInfo());
-		[TearDown] public void TearDown() => AppInfo.SetCurrent(null);
+		public Test() => AppInfo.SetCurrent(new MockAppInfo());
+		public void Dispose() => AppInfo.SetCurrent(null);
 
-		[Test]
-		public void NestedTriggers([Values] XamlInflator inflator)
+		[Theory]
+		[XamlInflatorData]
+		internal void NestedTriggers(XamlInflator inflator)
 		{
 			Maui6367 view = new Maui6367(inflator);
 		}
