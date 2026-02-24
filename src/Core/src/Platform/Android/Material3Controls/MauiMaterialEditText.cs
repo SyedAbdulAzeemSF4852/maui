@@ -19,11 +19,11 @@ internal class MauiMaterialEditText : TextInputEditText
 	{
 	}
 
-	public MauiMaterialEditText(Context context, IAttributeSet? attrs) : base(context, attrs)
+	public MauiMaterialEditText(Context context, IAttributeSet? attrs) : base(MauiMaterialContextThemeWrapper.Create(context), attrs)
 	{
 	}
 
-	public MauiMaterialEditText(Context context, IAttributeSet? attrs, int defStyleAttr) : base(context, attrs, defStyleAttr)
+	public MauiMaterialEditText(Context context, IAttributeSet? attrs, int defStyleAttr) : base(MauiMaterialContextThemeWrapper.Create(context), attrs, defStyleAttr)
 	{
 	}
 
