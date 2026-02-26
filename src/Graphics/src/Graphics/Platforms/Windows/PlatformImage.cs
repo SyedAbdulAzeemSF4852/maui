@@ -60,7 +60,7 @@ namespace Microsoft.Maui.Graphics.Platform
 			{
 				return this;
 			}
-			
+
 			if (Width > maxWidth || Height > maxHeight)
 			{
 				float factorX = maxWidth / Width;

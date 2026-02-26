@@ -449,10 +449,10 @@ namespace Microsoft.Maui.Graphics.Platform
 
 				float factor = Math.Min(factorX, factorY);
 
-				maxWidth = (int)Math.Round(factor * target.Width);
-				maxHeight = (int)Math.Round(factor * target.Height);
+				var targetWidth = (int)Math.Round(factor * target.Width);
+				var targetHeight = (int)Math.Round(factor * target.Height);
 
-				var newImage = Bitmap.CreateScaledBitmap(target, maxWidth, maxHeight, true);
+				var newImage = Bitmap.CreateScaledBitmap(target, targetWidth, targetHeight, true);
 				if (dispose)
 				{
 					target.Recycle();

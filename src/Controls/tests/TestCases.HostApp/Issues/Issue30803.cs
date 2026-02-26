@@ -43,16 +43,16 @@ public class Issue30803 : ContentPage
 		return button;
 	}
 
-	async Task<IImage> LoadImageAsync()
+	IImage LoadImage()
 	{
 		var assembly = GetType().GetTypeInfo().Assembly;
 		using var stream = assembly.GetManifestResourceStream("Controls.TestCases.HostApp.Resources.Images.royals.png");
-		return await Task.FromResult(PlatformImage.FromStream(stream));
+		return PlatformImage.FromStream(stream);
 	}
 
-	async void OnDownSize(object sender, EventArgs e)
+	void OnDownSize(object sender, EventArgs e)
 	{
-		var image = await LoadImageAsync();
+		var image = LoadImage();
 		var res = image.Downsize(10, 10);
 
 		UpdateStatusLabels(res);
