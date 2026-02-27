@@ -82,6 +82,18 @@ public static partial class AppHostBuilderExtensions
 #else
 		handlersCollection.AddHandler<Label, LabelHandler>();
 #endif
+#if ANDROID
+    if (RuntimeFeature.IsMaterial3Enabled)
+		{
+			handlersCollection.AddHandler<TimePicker, TimePickerHandler2>();
+		}
+		else
+		{
+			handlersCollection.AddHandler<TimePicker, TimePickerHandler>();
+		}
+#else
+		handlersCollection.AddHandler<TimePicker, TimePickerHandler>();
+#endif
 		handlersCollection.AddHandler<Application, ApplicationHandler>();
 		handlersCollection.AddHandler<ActivityIndicator, ActivityIndicatorHandler>();
 		handlersCollection.AddHandler<BoxView, BoxViewHandler>();
@@ -99,7 +111,6 @@ public static partial class AppHostBuilderExtensions
 		handlersCollection.AddHandler<Slider, SliderHandler>();
 		handlersCollection.AddHandler<Stepper, StepperHandler>();
 		handlersCollection.AddHandler<Switch, SwitchHandler>();
-		handlersCollection.AddHandler<TimePicker, TimePickerHandler>();
 		handlersCollection.AddHandler<Page, PageHandler>();
 		handlersCollection.AddHandler<WebView, WebViewHandler>();
 		if (RuntimeFeature.IsHybridWebViewSupported)
