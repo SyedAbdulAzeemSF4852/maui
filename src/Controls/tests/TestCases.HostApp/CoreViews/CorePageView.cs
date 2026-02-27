@@ -120,6 +120,9 @@ namespace Maui.Controls.Sample
 			new GalleryPageFactory(() => new IndicatorViewControlPage(), "IndicatorView Feature Matrix"),
 			new GalleryPageFactory(() => new GridControlPage(), "Grid Feature Matrix"),
 			new GalleryPageFactory(() => new LayoutFeaturePage(), "ScrollView With LayoutOptions Feature Matrix"),
+			new GalleryPageFactory(() => new ShellFeaturePage(), "Shell Feature Matrix"),
+			new GalleryPageFactory(() => new BrushesControlPage(), "Brushes Feature Matrix"),
+			new GalleryPageFactory(() => new BindableLayoutControlPage(), "BindableLayout Feature Matrix")
 		};
 
 
