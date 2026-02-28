@@ -84,6 +84,41 @@ public static partial class AppHostBuilderExtensions
 #endif
 #if ANDROID
     if (RuntimeFeature.IsMaterial3Enabled)
+			handlersCollection.AddHandler<Editor, EditorHandler2>();
+		}
+		else
+		{
+			handlersCollection.AddHandler<Editor, EditorHandler>();
+		}
+#else
+		handlersCollection.AddHandler<Editor, EditorHandler>();
+#endif
+#if ANDROID
+		if (RuntimeFeature.IsMaterial3Enabled)
+		{
+			handlersCollection.AddHandler<Picker, PickerHandler2>();
+		}
+		else
+		{
+			handlersCollection.AddHandler<Picker, PickerHandler>();
+		}
+#else
+		handlersCollection.AddHandler<Picker, PickerHandler>();
+#endif
+#if ANDROID
+		if (RuntimeFeature.IsMaterial3Enabled)
+		{
+			handlersCollection.AddHandler<RadioButton, RadioButtonHandler2>();
+		}
+		else
+		{
+			handlersCollection.AddHandler<RadioButton, RadioButtonHandler>();
+		}
+#else
+		handlersCollection.AddHandler<RadioButton, RadioButtonHandler>();
+#endif
+#if ANDROID
+		if (RuntimeFeature.IsMaterial3Enabled)
 		{
 			handlersCollection.AddHandler<TimePicker, TimePickerHandler2>();
 		}
@@ -99,12 +134,10 @@ public static partial class AppHostBuilderExtensions
 		handlersCollection.AddHandler<BoxView, BoxViewHandler>();
 		handlersCollection.AddHandler<Button, ButtonHandler>();
 		handlersCollection.AddHandler<DatePicker, DatePickerHandler>();
-		handlersCollection.AddHandler<Editor, EditorHandler>();
 		handlersCollection.AddHandler<Entry, EntryHandler>();
 		handlersCollection.AddHandler<GraphicsView, GraphicsViewHandler>();
 		handlersCollection.AddHandler<Image, ImageHandler>();
 		handlersCollection.AddHandler<Layout, LayoutHandler>();
-		handlersCollection.AddHandler<Picker, PickerHandler>();
 		handlersCollection.AddHandler<ProgressBar, ProgressBarHandler>();
 		handlersCollection.AddHandler<ScrollView, ScrollViewHandler>();
 		handlersCollection.AddHandler<SearchBar, SearchBarHandler>();
@@ -131,7 +164,6 @@ public static partial class AppHostBuilderExtensions
 		handlersCollection.AddHandler<Window, WindowHandler>();
 		handlersCollection.AddHandler<ImageButton, ImageButtonHandler>();
 		handlersCollection.AddHandler<IndicatorView, IndicatorViewHandler>();
-		handlersCollection.AddHandler<RadioButton, RadioButtonHandler>();
 		handlersCollection.AddHandler<RefreshView, RefreshViewHandler>();
 		handlersCollection.AddHandler<SwipeItem, SwipeItemMenuItemHandler>();
 		handlersCollection.AddHandler<SwipeView, SwipeViewHandler>();
