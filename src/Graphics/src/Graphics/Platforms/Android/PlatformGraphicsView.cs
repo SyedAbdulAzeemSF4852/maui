@@ -1,3 +1,4 @@
+using System;
 using Android.Content;
 using Android.Graphics;
 using Android.Text;
@@ -67,10 +68,24 @@ namespace Microsoft.Maui.Graphics.Platform
 			}
 
 			_scalingCanvas.ResetState();
-			_scalingCanvas.Scale(_scale, _scale);
-			//Since we are using a scaling canvas, we need to scale the rectangle
-			dirtyRect.Height /= _scale;
-			dirtyRect.Width /= _scale;
+			// Round pixel dimensions to the nearest integer dp value, then compute an adjusted
+			// scale factor so those integer dp values map to the exact pixel allocation.
+			// This gives the drawable clean integer dimensions with no sub-pixel gaps at view edges.
+			var logicalWidth = MathF.Round(_width / _scale);
+			var logicalHeight = MathF.Round(_height / _scale);
+			if (logicalWidth > 0 && logicalHeight > 0)
+			{
+				_scalingCanvas.Scale(_width / logicalWidth, _height / logicalHeight);
+				dirtyRect.Width = logicalWidth;
+				dirtyRect.Height = logicalHeight;
+			}
+			else
+			{
+				_scalingCanvas.Scale(_scale, _scale);
+				dirtyRect.Width = _width / _scale;
+				dirtyRect.Height = _height / _scale;
+			}
+
 			_drawable.Draw(_scalingCanvas, dirtyRect);
 			_canvas.Canvas = null;
 		}
