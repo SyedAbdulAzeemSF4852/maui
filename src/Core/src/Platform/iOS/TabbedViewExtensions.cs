@@ -155,5 +155,92 @@ namespace Microsoft.Maui.Platform
 			
 			return image.ResizeImageSource(newSize.Width, newSize.Height, new CGSize(image.Size.Width, image.Size.Height));
 		}
+
+		/// <summary>
+		/// Compares two UIColor instances by value equality, handling null.
+		/// Used to avoid redundant re-tinting of tab bar icons on iOS 26+.
+		/// </summary>
+		internal static bool ColorsEqual(UIColor? a, UIColor? b)
+		{
+			if (ReferenceEquals(a, b))
+			{
+				return true;
+			}
+
+			if (a is null || b is null)
+			{
+				return false;
+			}
+
+			return a.Equals(b);
+		}
+
+		/// <summary>
+		/// iOS 26 (Liquid Glass) ignores <c>UITabBarAppearance.Normal.IconColor</c> for unselected
+		/// tab items. Work around this by tinting each <see cref="UITabBarItem"/>'s image directly
+		/// and marking it <see cref="UIImageRenderingMode.AlwaysOriginal"/> so the Liquid Glass
+		/// compositor uses the literal pixel colors. The selected item's <c>SelectedImage</c> is
+		/// tinted with <paramref name="selectedColor"/> the same way.
+		/// When both colors are <c>null</c>, resets images to <see cref="UIImageRenderingMode.Automatic"/>
+		/// so iOS 26 Liquid Glass resumes default icon rendering.
+		/// </summary>
+		/// <param name="tabBar">The tab bar whose items to tint.</param>
+		/// <param name="unselectedColor">The icon color for unselected items, or <c>null</c> to clear.</param>
+		/// <param name="selectedColor">The icon color for the selected item, or <c>null</c> to clear.</param>
+		[System.Runtime.Versioning.SupportedOSPlatform("ios26.0")]
+		[System.Runtime.Versioning.SupportedOSPlatform("maccatalyst26.0")]
+		internal static bool ApplyiOS26TabBarIconColors(this UITabBar tabBar, UIColor? unselectedColor, UIColor? selectedColor)
+		{
+			var items = tabBar.Items;
+			if (items is null || items.Length == 0)
+			{
+				return false;
+			}
+
+			bool anyAction = false;
+			bool clearing = unselectedColor is null && selectedColor is null;
+
+			foreach (var item in items)
+			{
+				if (item.Image is null)
+				{
+					continue;
+				}
+
+				if (clearing)
+				{
+					item.Image = item.Image.ImageWithRenderingMode(UIImageRenderingMode.Automatic);
+					if (item.SelectedImage is not null)
+					{
+						item.SelectedImage = item.SelectedImage.ImageWithRenderingMode(UIImageRenderingMode.Automatic);
+					}
+				}
+				else
+				{
+					// Capture the original image before any modification so that when both
+					// colors are set and no dedicated SelectedImage exists, the selected tint
+					// is applied to the original template rather than the already-tinted image.
+					var originalImage = item.Image;
+
+					if (unselectedColor is not null)
+					{
+						item.Image = originalImage.ApplyTintColor(unselectedColor)
+							.ImageWithRenderingMode(UIImageRenderingMode.AlwaysOriginal);
+					}
+
+					if (selectedColor is not null)
+					{
+						item.SelectedImage = (item.SelectedImage ?? originalImage)
+							.ApplyTintColor(selectedColor)
+							.ImageWithRenderingMode(UIImageRenderingMode.AlwaysOriginal);
+					}
+				}
+
+				anyAction = true;
+			}
+
+			return anyAction;
+		}
+
 	}
 }

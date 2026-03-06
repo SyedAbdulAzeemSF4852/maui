@@ -8,6 +8,7 @@ using System.Xml.Linq;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
 using UIKit;
 using static Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.Page;
 using PageUIStatusBarAnimation = Microsoft.Maui.Controls.PlatformConfiguration.iOSSpecific.UIStatusBarAnimation;
@@ -27,6 +28,14 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 		bool? _defaultBarTranslucent;
 		IMauiContext _mauiContext;
 		UITabBarAppearance _tabBarAppearance;
+
+		// iOS 26 Liquid Glass ignores UITabBarAppearance.Normal.IconColor for unselected items.
+		// Work around this by tinting the tab item images directly.
+		UIColor _iOS26UnselectedIconColor;
+		UIColor _iOS26SelectedIconColor;
+		UIColor _lastAppliedUnselectedColor;
+		UIColor _lastAppliedSelectedColor;
+
 		WeakReference<VisualElement> _element;
 
 		Brush _currentBarBackground;
@@ -57,6 +66,19 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					return;
 
 				UpdateCurrentPage();
+
+				// On iOS 26+, Liquid Glass re-renders tab bar items on each selection change.
+				// Re-apply icon tinting so colors remain correct after every tab switch.
+				if (OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+				{
+					if (_lastAppliedUnselectedColor is not null || _lastAppliedSelectedColor is not null)
+					{
+						CoreFoundation.DispatchQueue.MainQueue.DispatchAsync(() =>
+						{
+							ApplyiOS26TabBarItemIconColors();
+						});
+					}
+				}
 			}
 		}
 
@@ -552,6 +574,18 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				};
 			}
 
+			// The tab item was just created with a fresh (untinted) image.
+			// Re-apply the iOS 26 icon color so this newly loaded image gets tinted.
+			if ((OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+			 && (_iOS26UnselectedIconColor is not null || _iOS26SelectedIconColor is not null))
+			{
+				// Reset last-applied tracking so the next call
+				// will unconditionally re-tint all items including this new one.
+				_lastAppliedUnselectedColor = null;
+				_lastAppliedSelectedColor = null;
+				ApplyiOS26TabBarItemIconColors();
+			}
+
 			icons?.Item1?.Dispose();
 			icons?.Item2?.Dispose();
 		}
@@ -578,6 +612,23 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					TabBar.UnselectedItemTintColor = tabbed.UnselectedTabColor.ToPlatform();
 				else
 					TabBar.UnselectedItemTintColor = UITabBar.Appearance.TintColor;
+			}
+
+			// iOS 26 (Liquid Glass) ignores UITabBarAppearance.Normal.IconColor for unselected tab icons.
+			// Tint each item's image directly, guarded by a color-equality check to avoid
+			// redundant re-tinting during tab-switch animations.
+			// Also handles clearing: if colors were previously applied but are now null,
+			// reset images to Automatic rendering mode to restore default iOS 26 appearance.
+			if ((OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+			 && (_iOS26UnselectedIconColor is not null || _iOS26SelectedIconColor is not null
+			  || _lastAppliedUnselectedColor is not null || _lastAppliedSelectedColor is not null))
+			{
+				bool colorsChanged = !TabbedViewExtensions.ColorsEqual(_lastAppliedUnselectedColor, _iOS26UnselectedIconColor)
+								  || !TabbedViewExtensions.ColorsEqual(_lastAppliedSelectedColor, _iOS26SelectedIconColor);
+				if (colorsChanged)
+				{
+					ApplyiOS26TabBarItemIconColors();
+				}
 			}
 		}
 
@@ -619,6 +670,46 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 				tabbed.IsSet(TabbedPage.BarBackgroundColorProperty) ? tabbed.BarBackgroundColor : null,
 				tabbed.IsSet(TabbedPage.BarTextColorProperty) ? tabbed.BarTextColor : null,
 				tabbed.IsSet(TabbedPage.BarTextColorProperty) ? tabbed.BarTextColor : null);
+
+			if (OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+			{
+				_iOS26UnselectedIconColor = tabbed.IsSet(TabbedPage.UnselectedTabColorProperty)
+					? tabbed.UnselectedTabColor?.ToPlatform()
+					: null;
+				_iOS26SelectedIconColor = tabbed.IsSet(TabbedPage.SelectedTabColorProperty)
+					? tabbed.SelectedTabColor?.ToPlatform()
+					: null;
+
+				// Setting UITabBarAppearance (done above) resets tab item images back to
+				// template rendering mode on iOS 26, undoing any AlwaysOriginal tints. Re-apply
+				// the tinted images immediately so colors are never lost after an appearance update.
+				ApplyiOS26TabBarItemIconColors();
+
+				// Force the tab bar to re-layout after replacing images.
+				// Without this, iOS 26 Liquid Glass does not reposition
+				// unselected tab items until the user navigates to them.
+				TabBar.LayoutIfNeeded();
+			}
+		}
+
+		[System.Runtime.Versioning.SupportedOSPlatform("ios26.0")]
+		[System.Runtime.Versioning.SupportedOSPlatform("maccatalyst26.0")]
+		void ApplyiOS26TabBarItemIconColors()
+		{
+			if (TabBar is null)
+			{
+				return;
+			}
+
+			bool tinted = TabBar.ApplyiOS26TabBarIconColors(
+				_iOS26UnselectedIconColor, _iOS26SelectedIconColor);
+
+			// Only mark as applied if items actually had images and were tinted.
+			if (tinted)
+			{
+				_lastAppliedUnselectedColor = _iOS26UnselectedIconColor;
+				_lastAppliedSelectedColor = _iOS26SelectedIconColor;
+			}
 		}
 
 		#region IPlatformViewHandler
