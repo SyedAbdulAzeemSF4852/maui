@@ -27,6 +27,12 @@ namespace Microsoft.Maui.Platform
 			InitializeComponent();
 		}
 
+		protected override void OnApplyTemplate()
+		{
+			base.OnApplyTemplate();
+			UpdateIconColor();
+		}
+
 		internal string? Title
 		{
 			get => title.Text;
@@ -162,19 +168,31 @@ namespace Microsoft.Maui.Platform
 
 		void UpdateIconColor()
 		{
+			var moreButton = GetTemplateChild("MoreButton") as Button;
+
 			if (IconColor != null)
 			{
-				TogglePaneButton?.SetApplicationResource("NavigationViewButtonForegroundPointerOver", IconColor.ToPlatform());
-				TogglePaneButton?.SetApplicationResource("NavigationViewButtonForegroundDisabled", IconColor.ToPlatform());
-				TogglePaneButton?.SetApplicationResource("NavigationViewButtonForegroundPressed", IconColor.ToPlatform());
+				var brush = IconColor.ToPlatform();
 
-				NavigationViewBackButton?.SetApplicationResource("NavigationViewButtonForegroundPointerOver", IconColor.ToPlatform());
-				NavigationViewBackButton?.SetApplicationResource("NavigationViewButtonForegroundDisabled", IconColor.ToPlatform());
-				NavigationViewBackButton?.SetApplicationResource("NavigationViewButtonForegroundPressed", IconColor.ToPlatform());
+				TogglePaneButton?.SetApplicationResource("NavigationViewButtonForegroundPointerOver", brush);
+				TogglePaneButton?.SetApplicationResource("NavigationViewButtonForegroundDisabled", brush);
+				TogglePaneButton?.SetApplicationResource("NavigationViewButtonForegroundPressed", brush);
+
+				NavigationViewBackButton?.SetApplicationResource("NavigationViewButtonForegroundPointerOver", brush);
+				NavigationViewBackButton?.SetApplicationResource("NavigationViewButtonForegroundDisabled", brush);
+				NavigationViewBackButton?.SetApplicationResource("NavigationViewButtonForegroundPressed", brush);
 
 				NavigationViewBackButton?.UpdateForegroundColor(IconColor);
 				TogglePaneButton?.UpdateForegroundColor(IconColor);
 
+				if (moreButton is not null)
+				{
+					moreButton.Foreground = brush;
+					if (moreButton.Content is IconElement icon)
+					{
+						icon.Foreground = brush;
+					}
+				}
 			}
 			else
 			{
@@ -188,6 +206,15 @@ namespace Microsoft.Maui.Platform
 
 				NavigationViewBackButton?.ClearValue(Button.ForegroundProperty);
 				TogglePaneButton?.ClearValue(Button.ForegroundProperty);
+
+				if (moreButton is not null)
+				{
+					moreButton.ClearValue(Button.ForegroundProperty);
+					if (moreButton.Content is IconElement icon)
+					{
+						icon.ClearValue(IconElement.ForegroundProperty);
+					}
+				}
 			}
 		}
 

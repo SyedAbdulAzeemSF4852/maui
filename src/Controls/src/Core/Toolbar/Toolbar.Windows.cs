@@ -5,14 +5,20 @@ using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml.Controls;
 using NativeAutomationProperties = Microsoft.UI.Xaml.Automation.AutomationProperties;
-using WImage = Microsoft.UI.Xaml.Controls.Image;
 
 namespace Microsoft.Maui.Controls
 {
 	public partial class Toolbar
 	{
-		readonly ImageConverter _imageConverter = new ImageConverter();
 		readonly ImageSourceIconElementConverter _imageSourceIconElementConverter = new ImageSourceIconElementConverter();
+
+		static readonly string[] _appBarButtonTextColorResourceKeys =
+		{
+			"AppBarButtonForeground",
+			"AppBarButtonForegroundPointerOver",
+			"AppBarButtonForegroundPressed",
+			"AppBarButtonForegroundDisabled",
+		};
 
 		NavigationRootManager? NavigationRootManager =>
 			MauiContext?.GetNavigationRootManager();
@@ -47,16 +53,9 @@ namespace Microsoft.Maui.Controls
 				var button = new AppBarButton();
 				button.SetBinding(AppBarButton.LabelProperty, "Text");
 
-				if (commandBar.IsDynamicOverflowEnabled && item.Order == ToolbarItemOrder.Secondary)
+				if (!item.IconImageSource.IsNullOrEmpty())
 				{
 					button.SetBinding(AppBarButton.IconProperty, "IconImageSource", _imageSourceIconElementConverter);
-				}
-				else if (!item.IconImageSource.IsNullOrEmpty())
-				{
-					var img = new WImage();
-					img.SetBinding(WImage.SourceProperty, "Value");
-					img.SetBinding(WImage.DataContextProperty, "IconImageSource", _imageConverter);
-					button.Content = img;
 				}
 
 				button.Command = new MenuItemCommand(item);
@@ -83,6 +82,39 @@ namespace Microsoft.Maui.Controls
 			}
 
 			SetDefaultLabelPosition(commandBar, toolbarItems);
+			UpdateItemColors();
+		}
+
+		// Updates colors on existing PrimaryCommands buttons without recreating them.
+		// Called by MapIconColor so dynamic color changes don't cause a rebuild glitch.
+		internal void UpdateItemColors()
+		{
+			if (Handler?.PlatformView is not MauiToolbar wh)
+			{
+				return;
+			}
+
+			var commandBar = wh.CommandBar;
+			if (commandBar == null)
+			{
+				return;
+			}
+
+			foreach (var command in commandBar.PrimaryCommands)
+			{
+				if (command is AppBarButton button)
+				{
+					button.UpdateTextColor(BarTextColor);
+					if (IconColor is not null)
+					{
+						button.UpdateTextColor(IconColor, _appBarButtonTextColorResourceKeys);
+						if (button.Icon is BitmapIcon bitmapIcon)
+						{
+							bitmapIcon.Foreground = IconColor.ToPlatform();
+						}
+					}
+				}
+			}
 		}
 
 		internal void OnToolbarItemPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -100,6 +132,13 @@ namespace Microsoft.Maui.Controls
 			{
 				var toolbarItems = new List<ToolbarItem>(ToolbarItems ?? Array.Empty<ToolbarItem>());
 				SetDefaultLabelPosition(commandBar, toolbarItems);
+			}
+
+			// When icon changes, the IconProperty binding creates a new BitmapIcon instance.
+			// Re-apply foreground color so the new icon respects Shell ForegroundColor.
+			if (e.PropertyName == nameof(ToolbarItem.IconImageSource))
+			{
+				UpdateItemColors();
 			}
 		}
 
@@ -198,6 +237,7 @@ namespace Microsoft.Maui.Controls
 		public static void MapIconColor(IToolbarHandler arg1, Toolbar arg2)
 		{
 			arg1.PlatformView.UpdateIconColor(arg2);
+			arg2.UpdateItemColors();
 		}
 
 		public static void MapIcon(ToolbarHandler arg1, Toolbar arg2)
@@ -225,7 +265,6 @@ namespace Microsoft.Maui.Controls
 
 		public static void MapBackButtonEnabled(ToolbarHandler arg1, Toolbar arg2) =>
 			MapBackButtonEnabled((IToolbarHandler)arg1, arg2);
-
 
 		public static void MapBackButtonEnabled(IToolbarHandler arg1, Toolbar arg2)
 		{
