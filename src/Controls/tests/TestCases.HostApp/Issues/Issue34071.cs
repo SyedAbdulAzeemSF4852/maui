@@ -19,7 +19,7 @@ public class Issue34071 : TestShell
 
 		page.Content = new Label
 		{
-			Text = "Test passes if the toolbar item text and icon respect the Shell ForegroundColor (purple).",
+			Text = "Test passes if the toolbar item respects the Shell ForegroundColor (purple).",
 			AutomationId = "Issue34071DescriptionLabel",
 			HorizontalOptions = LayoutOptions.Center,
 			VerticalOptions = LayoutOptions.Center,
