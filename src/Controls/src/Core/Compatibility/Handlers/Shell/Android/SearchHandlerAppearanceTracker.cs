@@ -88,6 +88,29 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				UpdateAutomationId();
 			}
+			else if (e.Is(SearchHandler.QueryProperty))
+			{
+				UpdateQuery();
+			}
+		}
+
+		void UpdateQuery()
+		{
+			var rawQuery = _searchHandler.Query ?? string.Empty;
+
+			// Guard: AfterTextChanged always sets Query to exactly what is in the EditText,
+			// so if they already match the user is actively typing — skip to avoid resetting
+			// the IME connection (keyboard flickering on Android).
+			if (_editText.Text == rawQuery)
+			{
+				return;
+			}
+
+			// Programmatic change: apply any text transform and update the control.
+			// The cursor goes to the end of the new text.
+			var newText = _searchHandler.UpdateFormsText(rawQuery, _searchHandler.TextTransform);
+			_editText.Text = newText;
+			_editText.SetSelection(_editText.Text?.Length ?? 0);
 		}
 
 		void EditTextFocusChange(object s, AView.FocusChangeEventArgs args)

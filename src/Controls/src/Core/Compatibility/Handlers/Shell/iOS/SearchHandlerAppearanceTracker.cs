@@ -117,6 +117,34 @@ namespace Microsoft.Maui.Controls.Platform.Compatibility
 			{
 				UpdateSearchBarVerticalTextAlignment(_uiSearchBar.FindDescendantView<UITextField>());
 			}
+			else if (e.Is(SearchHandler.QueryProperty))
+			{
+				UpdateQuery(_uiSearchBar.FindDescendantView<UITextField>());
+			}
+		}
+
+		void UpdateQuery(UITextField uiTextField)
+		{
+			if (uiTextField is null)
+			{
+				return;
+			}
+
+			var rawQuery = _searchHandler.Query ?? string.Empty;
+
+			// Guard: the iOS results updater sets Query to exactly what is in the text field,
+			// so if they match the user is typing — skip to avoid disrupting input.
+			if (uiTextField.Text == rawQuery)
+			{
+				return;
+			}
+
+			// Programmatic change: apply text transform and update the control.
+			uiTextField.Text = _searchHandler.UpdateFormsText(rawQuery, _searchHandler.TextTransform);
+
+			// Move cursor to end after a programmatic text change.
+			var end = uiTextField.EndOfDocument;
+			uiTextField.SelectedTextRange = uiTextField.GetTextRange(end, end);
 		}
 
 		void GetDefaultSearchBarColors(UISearchBar searchBar)
