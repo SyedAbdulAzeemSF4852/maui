@@ -227,5 +227,22 @@ namespace Microsoft.Maui.DeviceTests
 				Assert.Equal(expectedValue, isEnabled);
 			});
 		}
+
+		// Platform helpers — called from shared SwipeViewTests.cs to assert native view state
+		// Must be called from within AttachAndRun (already on main thread).
+		// _contentView is always the last child of MauiSwipeView after Open().
+
+		bool PlatformSwipeViewHasOpenedItems(SwipeViewHandler handler) =>
+			GetPlatformControl(handler).ChildCount > 2;
+
+		bool PlatformContentViewIsOpaque(SwipeViewHandler handler)
+		{
+			var platformView = GetPlatformControl(handler);
+			var contentView = platformView.GetChildAt(platformView.ChildCount - 1);
+			return contentView?.Background != null;
+		}
+
+		bool PlatformContentViewIsOpaqueFromFix(SwipeViewHandler handler) =>
+			PlatformContentViewIsOpaque(handler);
 	}
 }

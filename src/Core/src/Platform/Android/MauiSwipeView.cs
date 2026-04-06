@@ -264,6 +264,23 @@ namespace Microsoft.Maui.Platform
 
 			_contentView.RemoveFromParent();
 			AddView(_contentView);
+
+			// Ensure _contentView is opaque so _actionView cannot bleed through
+			// when the content has no background set
+			if (!HasVisibleBackground(Element?.PresentedContent))
+			{
+				_contentView.SetWindowBackground();
+			}
+		}
+
+		static bool HasVisibleBackground(IView? view)
+		{
+			if (view?.Background is Paint background)
+			{
+				return !background.IsNullOrEmpty() && !background.IsTransparent();
+			}
+
+			return false;
 		}
 
 		AView CreateEmptyContent()
@@ -584,6 +601,13 @@ namespace Microsoft.Maui.Platform
 			AddView(_actionView);
 			if (_contentView != null)
 			{
+				// Re-verify opacity in case content background was removed dynamically
+				// after UpdateContent() ran
+				if (!HasVisibleBackground(Element?.PresentedContent))
+				{
+					_contentView.SetWindowBackground();
+				}
+
 				_contentView.BringToFront();
 				int contextX = (int)_contentView.GetX();
 				int contentY = (int)_contentView.GetY();
@@ -814,6 +838,13 @@ namespace Microsoft.Maui.Platform
 		{
 			if (_contentView == null)
 				return;
+
+			// Re-apply opaque background before close animation starts,
+			// in case content background was removed at runtime.
+			if (!HasVisibleBackground(Element?.PresentedContent))
+			{
+				_contentView.SetWindowBackground();
+			}
 
 			_isResettingSwipe = true;
 			_isSwiping = false;

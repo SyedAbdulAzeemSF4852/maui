@@ -175,6 +175,22 @@ namespace Microsoft.Maui.Platform
 
 			if (_contentView != null)
 				BringSubviewToFront(_contentView);
+
+			// Ensure _contentView is opaque so _actionView cannot bleed through
+			if (_contentView is not null && !HasVisibleBackground(swipeView?.PresentedContent))
+			{
+				_contentView.BackgroundColor = ColorExtensions.BackgroundColor;
+			}
+		}
+
+		static bool HasVisibleBackground(IView? view)
+		{
+			if (view?.Background is Paint background)
+			{
+				return !background.IsNullOrEmpty() && !background.IsTransparent();
+			}
+
+			return false;
 		}
 
 		class SwipeRecognizerProxy
@@ -318,6 +334,13 @@ namespace Microsoft.Maui.Platform
 
 			AddSubview(_actionView);
 			BringSubviewToFront(_contentView);
+
+			// Re-verify opacity in case content background was removed dynamically
+			// after UpdateContent() ran
+			if (_contentView is not null && !HasVisibleBackground(Element?.PresentedContent))
+			{
+				_contentView.BackgroundColor = ColorExtensions.BackgroundColor;
+			}
 
 			LayoutSwipeItems(GetNativeSwipeItems());
 		}
@@ -728,6 +751,13 @@ namespace Microsoft.Maui.Platform
 		{
 			if (_swipeItemsRect == null || _contentView == null)
 				return;
+
+			// Ensure _contentView is opaque during close animation in case background
+			// was removed dynamically while the swipe was open.
+			if (!HasVisibleBackground(Element?.PresentedContent))
+			{
+				_contentView.BackgroundColor = ColorExtensions.BackgroundColor;
+			}
 
 			_isResettingSwipe = true;
 			_isSwiping = false;

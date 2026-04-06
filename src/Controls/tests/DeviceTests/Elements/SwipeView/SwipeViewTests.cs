@@ -5,6 +5,7 @@ using Microsoft.Maui.Graphics;
 using Microsoft.Maui.Handlers;
 using Microsoft.Maui.Hosting;
 using Xunit;
+using static Microsoft.Maui.DeviceTests.AssertHelpers;
 
 namespace Microsoft.Maui.DeviceTests
 {
@@ -28,6 +29,42 @@ namespace Microsoft.Maui.DeviceTests
 		}
 
 #if !WINDOWS
+		[Fact(DisplayName = "ContentView Gets Opaque Background When Content Has No Background (Issue #20939)")]
+		public async Task ContentViewGetsOpaqueBackgroundWhenContentHasNoBackground()
+		{
+			// When SwipeView.Content has no background, _contentView must be made opaque
+			// so that _actionView cannot bleed through before the user drags.
+			SetupBuilder();
+
+			Grid content = new Grid
+			{
+				HeightRequest = 60
+				// No BackgroundColor / Background — this is the bug-triggering case
+			};
+
+			SwipeItem swipeItem = new SwipeItem
+			{
+				Text = "Action",
+				BackgroundColor = Colors.IndianRed,
+			};
+
+			SwipeView swipeView = new SwipeView
+			{
+				LeftItems = new SwipeItems { swipeItem },
+				Content = content
+			};
+
+			await AttachAndRun(swipeView, async (handler) =>
+			{
+				swipeView.Open(OpenSwipeItem.LeftItems, false);
+
+				await AssertEventually(() => PlatformSwipeViewHasOpenedItems((SwipeViewHandler)handler));
+
+				Assert.True(PlatformContentViewIsOpaque((SwipeViewHandler)handler),
+					"_contentView must be opaque when content has no background (fix for issue #20939)");
+			});
+		}
+
 		[Fact(DisplayName = "SwipeView LogicalChildren Works Correctly")]
 		public async Task SwipeViewLogicalChildren()
 		{
