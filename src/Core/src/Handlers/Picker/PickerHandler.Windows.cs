@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using Microsoft.Maui.Platform;
 using Microsoft.UI.Xaml.Controls;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
 
@@ -121,6 +122,18 @@ namespace Microsoft.Maui.Handlers
 
 			if (VirtualView != null && !UpdatingItemSource)
 				VirtualView.SelectedIndex = PlatformView.SelectedIndex;
+
+			if (VirtualView is not null && PlatformView.IsLoaded)
+			{
+				var characterSpacing = VirtualView.CharacterSpacing.ToEm();
+				void OnLayoutUpdated(object? s, object ev)
+				{
+					PlatformView.LayoutUpdated -= OnLayoutUpdated;
+					PickerExtensions.SetCharacterSpacingOnDescendantTextBlocks(PlatformView, characterSpacing);
+				}
+				
+				PlatformView.LayoutUpdated += OnLayoutUpdated;
+			}
 
 			PlatformView.MinWidth = 0;
 		}
