@@ -95,6 +95,14 @@ namespace Microsoft.Maui.Handlers
 						}
 					});
 #endif
+
+#if IOS
+				// iOS 26+ "Liquid Glass" resets Switch colors during post-connect layout. Re-apply colors after layout completes.
+				if (OperatingSystem.IsIOSVersionAtLeast(26))
+				{
+					ApplyColorsAfterLayout(platformView);
+				}
+#endif
 			}
 
 			// Ensures the Switch track "OFF" color is updated correctly after system-level UI resets.
@@ -115,6 +123,27 @@ namespace Microsoft.Maui.Handlers
 					}
 				});
 			}
+
+#if IOS
+			void ApplyColorsAfterLayout(UISwitch platformView)
+			{
+				DispatchQueue.MainQueue.DispatchAsync(() =>
+				{
+					if (VirtualView is ISwitch view)
+					{
+						if (view.TrackColor is not null)
+						{
+							platformView.UpdateTrackColor(view);
+						}
+
+						if (view.ThumbColor is not null)
+						{
+							platformView.UpdateThumbColor(view);
+						}
+					}
+				});
+			}
+#endif
 
 			public void Disconnect(UISwitch platformView)
 			{
