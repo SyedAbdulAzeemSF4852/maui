@@ -2,6 +2,7 @@
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
 
 namespace Microsoft.Maui.Platform
 {
@@ -78,29 +79,21 @@ namespace Microsoft.Maui.Platform
 			nativeComboBox.CharacterSpacing = characterSpacing;
 
 			if (nativeComboBox.IsLoaded)
-			{
-				ApplyCharacterSpacingToSelectedItem(nativeComboBox, characterSpacing);
-			}
-			else
-			{
-				nativeComboBox.OnLoaded(() =>
-				{
-					ApplyCharacterSpacingToSelectedItem(nativeComboBox, characterSpacing);
-				});
-			}
+				SetCharacterSpacingOnDescendantTextBlocks(nativeComboBox, characterSpacing);
 		}
 
-		static void ApplyCharacterSpacingToSelectedItem(ComboBox nativeComboBox, int characterSpacing)
+		internal static void SetCharacterSpacingOnDescendantTextBlocks(DependencyObject parent, int characterSpacing)
 		{
-			var contentPresenter = nativeComboBox.GetDescendantByName<ContentPresenter>("ContentPresenter");
-
-			if (contentPresenter is not null)
+			var count = VisualTreeHelper.GetChildrenCount(parent);
+			for (int i = 0; i < count; i++)
 			{
-				var textBlock = contentPresenter.GetFirstDescendant<TextBlock>();
-				if (textBlock is not null)
+				var child = VisualTreeHelper.GetChild(parent, i);
+				if (child is TextBlock textBlock)
 				{
 					textBlock.CharacterSpacing = characterSpacing;
 				}
+
+				SetCharacterSpacingOnDescendantTextBlocks(child, characterSpacing);
 			}
 		}
 

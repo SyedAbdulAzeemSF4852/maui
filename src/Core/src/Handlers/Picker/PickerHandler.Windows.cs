@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
+using Microsoft.Maui.Platform;
 using Microsoft.UI.Xaml.Controls;
 using WSelectionChangedEventArgs = Microsoft.UI.Xaml.Controls.SelectionChangedEventArgs;
 
@@ -84,7 +85,26 @@ namespace Microsoft.Maui.Handlers
 
 		public static void MapCharacterSpacing(IPickerHandler handler, IPicker picker)
 		{
-			handler.PlatformView?.UpdateCharacterSpacing(picker);
+			var platformView = handler.PlatformView;
+			if (platformView is null)
+			{
+				return;
+			}
+
+			platformView.UpdateCharacterSpacing(picker);
+			if (!platformView.IsLoaded)
+			{
+				platformView.OnLoaded(() =>
+				{
+					if (handler.VirtualView is null)
+					{
+						return;
+					}
+
+					var characterSpacing = handler.VirtualView.CharacterSpacing.ToEm();
+					PickerExtensions.SetCharacterSpacingOnDescendantTextBlocks(platformView, characterSpacing);
+				});
+			}
 		}
 
 		public static void MapFont(IPickerHandler handler, IPicker picker)
@@ -121,6 +141,23 @@ namespace Microsoft.Maui.Handlers
 
 			if (VirtualView != null && !UpdatingItemSource)
 				VirtualView.SelectedIndex = PlatformView.SelectedIndex;
+
+			if (PlatformView.IsLoaded)
+			{
+					void OnLayoutUpdated(object? s, object ev)
+					{
+						PlatformView.LayoutUpdated -= OnLayoutUpdated;
+						if (PlatformView is null || VirtualView is null)
+						{
+							return;
+						}
+
+						var characterSpacing = VirtualView.CharacterSpacing.ToEm();
+						PickerExtensions.SetCharacterSpacingOnDescendantTextBlocks(PlatformView, characterSpacing);
+					}
+
+				PlatformView.LayoutUpdated += OnLayoutUpdated;
+			}
 
 			PlatformView.MinWidth = 0;
 		}
