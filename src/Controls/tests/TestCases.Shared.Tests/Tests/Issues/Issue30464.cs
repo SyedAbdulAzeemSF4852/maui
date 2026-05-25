@@ -18,6 +18,7 @@ public class Issue30464 : _IssuesUITest
 	{
 		App.WaitForElement("Issue30464DescriptionLabel");
 		App.Tap("Issue30464Btn");
+		App.Tap("Issue30464ChangeSelectionBtn");
 		VerifyScreenshot();
 	}
 }
