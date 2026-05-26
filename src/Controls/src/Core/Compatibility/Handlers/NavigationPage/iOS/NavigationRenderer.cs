@@ -2485,6 +2485,18 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 
 			public override SizeF SizeThatFits(SizeF size)
 			{
+				// iOS 26+ Liquid Glass: returning natural content width lets UIKit expand
+				// the back-button platter into the leftover space so the title is visible.
+				if ((OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+					&& _child?.VirtualView is IView contentView)
+				{
+					var measured = contentView.Measure(size.Width, ToolbarHeight);
+					if (measured.Width > 0 && measured.Width < size.Width)
+					{
+						return new SizeF((nfloat)measured.Width, ToolbarHeight);
+					}
+				}
+
 				return new SizeF(size.Width, ToolbarHeight);
 			}
 
