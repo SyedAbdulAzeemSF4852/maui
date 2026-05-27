@@ -1796,10 +1796,42 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 					NavigationItem.Title = title;
 
 				if (backButtonTitle != null)
+				{
+					// On iOS 26+ and Mac Catalyst 26+ (Liquid Glass), the back button title area has limited space.
+					// Truncate long titles with an ellipsis so the text is visible rather than hidden entirely.
+					// Use a conservative 70px max to leave room for toolbar items on iOS.
+					string displayTitle = (OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+						? TruncateBackButtonTitle(backButtonTitle, maxWidth: 70f)
+						: backButtonTitle;
 					// adding a custom event handler to UIBarButtonItem for navigating back seems to be ignored.
-					NavigationItem.BackBarButtonItem = new UIBarButtonItem { Title = backButtonTitle, Style = UIBarButtonItemStyle.Plain };
+					NavigationItem.BackBarButtonItem = new UIBarButtonItem { Title = displayTitle, Style = UIBarButtonItemStyle.Plain };
+				}
 				else
 					NavigationItem.BackBarButtonItem = null;
+			}
+
+			static string TruncateBackButtonTitle(string text, float maxWidth)
+			{
+				var font = UIBarButtonItem.Appearance.GetTitleTextAttributes(UIControlState.Normal)?.Font
+					?? UIFont.SystemFontOfSize(UIFont.ButtonFontSize);
+				var attrs = new UIStringAttributes { Font = font };
+				var fullSize = new NSString(text).GetSizeUsingAttributes(attrs);
+				if (fullSize.Width <= maxWidth)
+				{
+					return text;
+				}
+
+				const string ellipsis = "…";
+				for (int len = text.Length - 1; len > 0; len--)
+				{
+					var candidate = text.Substring(0, len) + ellipsis;
+					var size = new NSString(candidate).GetSizeUsingAttributes(attrs);
+					if (size.Width <= maxWidth)
+					{
+						return candidate;
+					}
+				}
+				return ellipsis;
 			}
 
 			internal void UpdateTitleArea(Page page)
