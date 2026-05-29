@@ -378,7 +378,13 @@ namespace Microsoft.Maui.Platform
 			if (textInput is IEntry entry && entry.IsPassword)
 			{
 				if (editText.InputType.HasFlag(InputTypes.ClassText))
-					editText.InputType |= InputTypes.TextVariationPassword;
+				{
+					// Clear all variation bits first, then set TextVariationPassword.
+					// Required because TextVariationVisiblePassword (0x90) has overlapping bits
+					// with TextVariationPassword (0x80); a plain |= cannot transition between them.
+					const int textVariationMask = 0xFF0;
+					editText.InputType = (InputTypes)((int)editText.InputType & ~textVariationMask) | InputTypes.TextVariationPassword;
+				}
 				if (editText.InputType.HasFlag(InputTypes.ClassNumber))
 					editText.InputType |= InputTypes.NumberVariationPassword;
 			}

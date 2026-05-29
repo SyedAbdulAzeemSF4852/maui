@@ -243,7 +243,16 @@ namespace Microsoft.Maui.DeviceTests
 		bool GetNativeIsPassword(EntryHandler entryHandler)
 		{
 			var inputType = GetNativeEntry(entryHandler).InputType;
-			return inputType.HasFlag(InputTypes.TextVariationPassword) || inputType.HasFlag(InputTypes.NumberVariationPassword);
+			// Use mask+exact comparison for both text and number variations.
+			// TextVariationVisiblePassword (0x90) contains NumberVariationPassword (0x10) bits,
+			// so HasFlag-based checks cause false positives. Check the class first.
+			const int typeMaskVariation = 0xFF0;
+			var variation = (int)inputType & typeMaskVariation;
+			if (inputType.HasFlag(InputTypes.ClassText))
+				return variation == (int)InputTypes.TextVariationPassword;
+			if (inputType.HasFlag(InputTypes.ClassNumber))
+				return variation == (int)InputTypes.NumberVariationPassword;
+			return false;
 		}
 
 		bool GetNativeIsTextPredictionEnabled(EntryHandler entryHandler) =>

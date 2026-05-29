@@ -140,6 +140,67 @@ namespace Microsoft.Maui.DeviceTests
 				unsetValue);
 		}
 
+		[Fact(DisplayName = "Password Keyboard Respects IsPassword False Initially")]
+		public async Task PasswordKeyboardRespectsIsPasswordFalseInitially()
+		{
+			var entry = new EntryStub()
+			{
+				Keyboard = Keyboard.Password,
+				IsPassword = false,
+				Text = "1234"
+			};
+
+			await CreateHandlerAsync(entry);
+
+			// Initial state: Keyboard=Password but IsPassword=false → text should NOT be masked
+			await InvokeOnMainThreadAsync(() =>
+			{
+				Assert.False(GetNativeIsPassword(entry.Handler as EntryHandler),
+					"Entry with Keyboard=Password and IsPassword=false should not be masked on initial load");
+			});
+		}
+
+		[Fact(DisplayName = "Password Keyboard IsPassword Toggle Works Correctly")]
+		public async Task PasswordKeyboardIsPasswordToggleWorksCorrectly()
+		{
+			var entry = new EntryStub()
+			{
+				Keyboard = Keyboard.Password,
+				IsPassword = false,
+				Text = "1234"
+			};
+
+			await CreateHandlerAsync(entry);
+
+			// Initial: IsPassword=false → not masked
+			await InvokeOnMainThreadAsync(() =>
+			{
+				Assert.False(GetNativeIsPassword(entry.Handler as EntryHandler),
+					"Initial state: should not be masked");
+			});
+
+			// Toggle to IsPassword=true → masked
+			// EntryStub is not a BindableObject, so we must explicitly call UpdateValue after changing the property.
+			await InvokeOnMainThreadAsync(() =>
+			{
+				entry.IsPassword = true;
+				(entry.Handler as EntryHandler).UpdateValue(nameof(IEntry.IsPassword));
+			});
+			await InvokeOnMainThreadAsync(() =>
+				Assert.True(GetNativeIsPassword(entry.Handler as EntryHandler),
+					"After IsPassword=true: should be masked"));
+
+			// Toggle back to IsPassword=false → not masked
+			await InvokeOnMainThreadAsync(() =>
+			{
+				entry.IsPassword = false;
+				(entry.Handler as EntryHandler).UpdateValue(nameof(IEntry.IsPassword));
+			});
+			await InvokeOnMainThreadAsync(() =>
+				Assert.False(GetNativeIsPassword(entry.Handler as EntryHandler),
+					"After IsPassword=false: should not be masked"));
+		}
+
 		[Theory(DisplayName = "TextColor Updates Correctly")]
 		[InlineData(0xFFFF0000, 0xFF0000FF)]
 		[InlineData(0xFF0000FF, 0xFFFF0000)]

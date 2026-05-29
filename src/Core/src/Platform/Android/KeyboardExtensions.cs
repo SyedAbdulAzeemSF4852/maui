@@ -32,7 +32,7 @@ namespace Microsoft.Maui.Platform
 			else if (self == Keyboard.Time)
 				result = InputTypes.ClassDatetime | InputTypes.DatetimeVariationTime;
 			else if (self == Keyboard.Password)
-				result = InputTypes.ClassText | InputTypes.TextVariationPassword;
+				result = InputTypes.ClassText | InputTypes.TextVariationVisiblePassword;
 			else if (self is CustomKeyboard custom)
 			{
 				var capitalizedSentenceEnabled = (custom.Flags & KeyboardFlags.CapitalizeSentence) == KeyboardFlags.CapitalizeSentence;
