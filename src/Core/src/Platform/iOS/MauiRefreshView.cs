@@ -43,15 +43,54 @@ namespace Microsoft.Maui.Platform
 				{
 					if (_isRefreshing)
 					{
-						TryOffsetRefresh(this, IsRefreshing);
+						TryOffsetRefresh(this, true);
 						_refreshControl.BeginRefreshing();
 					}
 					else
 					{
 						_refreshControl.EndRefreshing();
-						TryOffsetRefresh(this, IsRefreshing);
+						TryOffsetRefresh(this, false);
 					}
 				}
+			}
+		}
+
+		public override void MovedToWindow()
+		{
+			base.MovedToWindow();
+
+			if (Window is null)
+			{
+				// View is leaving the window hierarchy. Reset the UIRefreshControl without
+				// animation (the view is off-screen, so the reset is invisible). This
+				// guarantees that when the view re-enters the window the entry path always
+				// starts from Refreshing=false, avoiding conflicting UIKit animations that
+				// would otherwise result from calling EndRefreshing() and BeginRefreshing()
+				// in the same run-loop cycle on return.
+				if (_refreshControl.Refreshing)
+				{
+					UIView.PerformWithoutAnimation(() => _refreshControl.EndRefreshing());
+				}
+
+				return;
+			}
+
+			// View is entering the window. If IsRefreshing=true, UIKit will have rejected
+			// BeginRefreshing() earlier because the view wasn't yet in the window hierarchy
+			// (OnAppearing fires during the navigation animation before the view is attached).
+			// Retry on the next run-loop tick so UIKit accepts it.
+			if (_isRefreshing)
+			{
+				DispatchQueue.MainQueue.DispatchAsync(() =>
+				{
+					if (Window is null || !_isRefreshing)
+					{
+						return;
+					}
+
+					TryOffsetRefresh(this, true);
+					_refreshControl.BeginRefreshing();
+				});
 			}
 		}
 
@@ -80,7 +119,6 @@ namespace Microsoft.Maui.Platform
 					scrollView.SetContentOffset(new CGPoint(0, _originalY - _refreshControlHeight), true);
 				else
 					scrollView.ContentOffset = new CGPoint(0, _originalY);
-
 				return true;
 			}
 
