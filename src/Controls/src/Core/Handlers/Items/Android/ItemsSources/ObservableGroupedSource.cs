@@ -6,7 +6,7 @@ using System.Collections.Specialized;
 
 namespace Microsoft.Maui.Controls.Handlers.Items
 {
-	internal class ObservableGroupedSource : IGroupableItemsViewSource, ICollectionChangedNotifier, IObservableItemsViewSource
+	internal class ObservableGroupedSource : IGroupableItemsViewSource, ICollectionChangedNotifier, IObservableItemsViewSource, ILogicalDataIndexMapper
 	{
 		readonly GroupableItemsView _groupableItemsView;
 		readonly ICollectionChangedNotifier _notifier;
@@ -15,6 +15,12 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		readonly bool _hasGroupHeaders;
 		readonly bool _hasGroupFooters;
 		bool _disposed;
+		bool _hasHeader;
+		bool _hasFooter;
+		bool _logicalIndexMapValid;
+		int _logicalDataItemCount;
+		int[] _nextLogicalDataIndex;
+		int[] _previousLogicalDataIndex;
 
 		public int Count
 		{
@@ -33,9 +39,45 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			}
 		}
 
-		public bool HasHeader { get; set; }
-		public bool HasFooter { get; set; }
+		public bool HasHeader
+		{
+			get => _hasHeader;
+			set
+			{
+				if (_hasHeader == value)
+				{
+					return;
+				}
+
+				_hasHeader = value;
+				InvalidateLogicalIndexMap();
+			}
+		}
+
+		public bool HasFooter
+		{
+			get => _hasFooter;
+			set
+			{
+				if (_hasFooter == value)
+				{
+					return;
+				}
+
+				_hasFooter = value;
+				InvalidateLogicalIndexMap();
+			}
+		}
 		public bool ObserveChanges { get; set; } = true;
+
+		public int LogicalDataItemCount
+		{
+			get
+			{
+				EnsureLogicalIndexMap();
+				return _logicalDataItemCount;
+			}
+		}
 
 		public ObservableGroupedSource(GroupableItemsView groupableItemsView, ICollectionChangedNotifier notifier)
 		{
@@ -171,6 +213,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public void NotifyItemInserted(IItemsViewSource group, int localIndex)
 		{
+			InvalidateLogicalIndexMap();
 			localIndex = GetAbsolutePosition(group, localIndex);
 			_notifier.NotifyItemInserted(this, localIndex);
 		}
@@ -191,20 +234,53 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public void NotifyItemRangeInserted(IItemsViewSource group, int localIndex, int count)
 		{
+			InvalidateLogicalIndexMap();
 			localIndex = GetAbsolutePosition(group, localIndex);
 			_notifier.NotifyItemRangeInserted(this, localIndex, count);
 		}
 
 		public void NotifyItemRangeRemoved(IItemsViewSource group, int localIndex, int count)
 		{
+			InvalidateLogicalIndexMap();
 			localIndex = GetAbsolutePosition(group, localIndex);
 			_notifier.NotifyItemRangeRemoved(this, localIndex, count);
 		}
 
 		public void NotifyItemRemoved(IItemsViewSource group, int localIndex)
 		{
+			InvalidateLogicalIndexMap();
 			localIndex = GetAbsolutePosition(group, localIndex);
 			_notifier.NotifyItemRemoved(this, localIndex);
+		}
+
+		public int GetLogicalDataIndex(int adapterPosition, bool snapForward)
+		{
+			EnsureLogicalIndexMap();
+
+			if (_logicalDataItemCount == 0)
+			{
+				return 0;
+			}
+
+			if (adapterPosition < 0)
+			{
+				return 0;
+			}
+
+			if (adapterPosition >= Count)
+			{
+				return _logicalDataItemCount - 1;
+			}
+
+			var map = snapForward ? _nextLogicalDataIndex : _previousLogicalDataIndex;
+			int mappedIndex = map[adapterPosition];
+
+			if (mappedIndex >= 0)
+			{
+				return mappedIndex;
+			}
+
+			return snapForward ? _logicalDataItemCount - 1 : 0;
 		}
 
 		protected virtual void Dispose(bool disposing)
@@ -243,6 +319,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 					_groups.Add(source);
 				}
 			}
+
+			InvalidateLogicalIndexMap();
 		}
 
 		void ClearGroupTracking()
@@ -252,6 +330,77 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 				_groups[n].Dispose();
 				_groups.RemoveAt(n);
 			}
+		}
+
+		void InvalidateLogicalIndexMap()
+		{
+			_logicalIndexMapValid = false;
+		}
+
+		void EnsureLogicalIndexMap()
+		{
+			if (_logicalIndexMapValid)
+			{
+				return;
+			}
+
+			int count = Count;
+			_nextLogicalDataIndex = new int[count];
+			_previousLogicalDataIndex = new int[count];
+
+			for (int n = 0; n < count; n++)
+			{
+				_nextLogicalDataIndex[n] = -1;
+				_previousLogicalDataIndex[n] = -1;
+			}
+
+			int adapterIndex = HasHeader ? 1 : 0;
+			int logicalIndex = 0;
+
+			for (int groupIndex = 0; groupIndex < _groups.Count; groupIndex++)
+			{
+				var group = _groups[groupIndex];
+
+				for (int indexInGroup = 0; indexInGroup < group.Count && adapterIndex < count; indexInGroup++, adapterIndex++)
+				{
+					if (!group.IsHeader(indexInGroup) && !group.IsFooter(indexInGroup))
+					{
+						_nextLogicalDataIndex[adapterIndex] = logicalIndex;
+						_previousLogicalDataIndex[adapterIndex] = logicalIndex;
+						logicalIndex++;
+					}
+				}
+			}
+
+			_logicalDataItemCount = logicalIndex;
+
+			int nextIndex = -1;
+			for (int n = count - 1; n >= 0; n--)
+			{
+				if (_nextLogicalDataIndex[n] >= 0)
+				{
+					nextIndex = _nextLogicalDataIndex[n];
+				}
+				else
+				{
+					_nextLogicalDataIndex[n] = nextIndex;
+				}
+			}
+
+			int previousIndex = -1;
+			for (int n = 0; n < count; n++)
+			{
+				if (_previousLogicalDataIndex[n] >= 0)
+				{
+					previousIndex = _previousLogicalDataIndex[n];
+				}
+				else
+				{
+					_previousLogicalDataIndex[n] = previousIndex;
+				}
+			}
+
+			_logicalIndexMapValid = true;
 		}
 
 		void CollectionChanged(object sender, NotifyCollectionChangedEventArgs args)

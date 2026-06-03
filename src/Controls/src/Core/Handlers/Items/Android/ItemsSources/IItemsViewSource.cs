@@ -26,4 +26,11 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		bool IsGroupHeader(int position);
 		bool IsGroupFooter(int position);
 	}
+
+	internal interface ILogicalDataIndexMapper
+	{
+		int LogicalDataItemCount { get; }
+
+		int GetLogicalDataIndex(int adapterPosition, bool snapForward);
+	}
 }
