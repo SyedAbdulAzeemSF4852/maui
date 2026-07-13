@@ -626,9 +626,7 @@ namespace Microsoft.Maui.Platform
 				return;
 			}
 
-			platformView.UserInteractionEnabled = platformView is UIControl
-				? !view.InputTransparent
-				: view.IsEnabled && !view.InputTransparent;
+			platformView.UserInteractionEnabled = !view.InputTransparent;
 		}
 
 		public static void UpdateInputTransparent(this UIView platformView, bool isReadOnly, bool inputTransparent)
