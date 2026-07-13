@@ -62,7 +62,20 @@ namespace Microsoft.Maui.Handlers
 			=> handler.PlatformView.UpdateIsRefreshEnabled(refreshView.IsRefreshEnabled);
 
 		public static void MapIsEnabled(IRefreshViewHandler handler, IRefreshView refreshView)
-			=> handler.PlatformView.UpdateIsEnabled(refreshView.IsEnabled);
+		{
+			handler.PlatformView!.UpdateIsEnabled(refreshView.IsEnabled);
+		}
+
+		// RefreshView's native container must stay interactive even when the view's
+		// logical/cascaded IsEnabled is False — disabling should only gate the pull-to-refresh
+		// gesture itself (see MapIsRefreshEnabled), not block touches to content hosted inside
+		// (e.g. a CollectionView that should remain scrollable). So unlike the generic
+		// UpdateInteractionState formula, this intentionally ignores IsEnabled and only
+		// reacts to InputTransparent.
+		public static void MapInputTransparent(IRefreshViewHandler handler, IRefreshView refreshView)
+		{
+			handler.PlatformView!.UserInteractionEnabled = !refreshView.InputTransparent;
+		}
 
 		static void UpdateContent(IRefreshViewHandler handler)
 		{

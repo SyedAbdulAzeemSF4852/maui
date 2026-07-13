@@ -84,6 +84,14 @@ namespace Microsoft.Maui.Handlers
 		public static void MapIsEnabled(IScrollViewHandler handler, IScrollView scrollView)
 		{
 			handler.PlatformView?.UpdateIsEnabled(scrollView);
+
+			// Also funnel through the generic single-owner path so UserInteractionEnabled
+			// stays correctly derived from both IsEnabled and InputTransparent, not just
+			// ScrollEnabled (which is all the ScrollView-specific overload above sets).
+			if (handler.PlatformView is not null)
+			{
+				Platform.ViewExtensions.UpdateIsEnabled(handler.PlatformView, scrollView);
+			}
 		}
 
 		public static void MapHorizontalScrollBarVisibility(IScrollViewHandler handler, IScrollView scrollView)

@@ -34,7 +34,8 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			[Controls.ItemsView.FlowDirectionProperty.PropertyName] = MapFlowDirection,
 			[Controls.ItemsView.IsVisibleProperty.PropertyName] = MapIsVisible,
 			[Controls.ItemsView.ItemsUpdatingScrollModeProperty.PropertyName] = MapItemsUpdatingScrollMode,
-			[nameof(IView.IsEnabled)] = MapIsEnabled
+			[nameof(IView.IsEnabled)] = MapIsEnabled,
+			[nameof(IView.InputTransparent)] = MapInputTransparent
 		};
 
 		UICollectionViewLayout _layout;
@@ -125,6 +126,19 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 		internal static void MapIsEnabled(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)
 		{
 			(handler.Controller as SelectableItemsViewController2<ReorderableItemsView>)?.UpdateSelectionMode();
+		}
+
+		// CollectionView's native container must stay interactive even when the view's
+		// logical/cascaded IsEnabled is False (e.g. hosted inside a disabled RefreshView) —
+		// its own scrolling/selection is independently gated by its own IsEnabled-driven UI,
+		// not by this container flag. So unlike the generic UpdateInteractionState formula,
+		// this intentionally ignores IsEnabled and only reacts to InputTransparent.
+		internal static void MapInputTransparent(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)
+		{
+			if (handler.PlatformView is not null)
+			{
+				handler.PlatformView.UserInteractionEnabled = !itemsView.InputTransparent;
+			}
 		}
 
 		public static void MapItemsUpdatingScrollMode(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)

@@ -70,6 +70,14 @@ namespace Microsoft.Maui.Handlers
 		public static void MapIsEnabled(ISearchBarHandler handler, ISearchBar searchBar)
 		{
 			handler.PlatformView?.UpdateIsEnabled(searchBar);
+
+			// Also funnel through the generic single-owner path so UserInteractionEnabled
+			// stays correctly derived from both IsEnabled and InputTransparent (the
+			// SearchBar-specific overload above only factors in IsEnabled).
+			if (handler.PlatformView is not null)
+			{
+				Platform.ViewExtensions.UpdateIsEnabled(handler.PlatformView, searchBar);
+			}
 		}
 
 		public static void MapText(ISearchBarHandler handler, ISearchBar searchBar)

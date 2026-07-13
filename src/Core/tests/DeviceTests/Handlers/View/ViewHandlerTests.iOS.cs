@@ -1,6 +1,7 @@
 using System.Threading.Tasks;
 using Microsoft.Maui.DeviceTests.Stubs;
 using Microsoft.Maui.Handlers;
+using Microsoft.Maui.Platform;
 using Xunit;
 
 namespace Microsoft.Maui.DeviceTests
@@ -48,6 +49,36 @@ namespace Microsoft.Maui.DeviceTests
 				handler.UpdateValue(nameof(IView.IsEnabled));
 
 				Assert.False(handler.PlatformView.UserInteractionEnabled);
+			});
+		}
+
+		[Theory]
+		[InlineData(false, true)]
+		[InlineData(true, false)]
+		public async Task ContainerUserInteractionTracksIsEnabledAndInputTransparent(bool inputTransparent, bool expectedWhenEnabled)
+		{
+			var view = new StubBase
+			{
+				Clip = new PathShapeStub(),
+				InputTransparent = inputTransparent
+			};
+			var handler = await CreateHandlerAsync(view);
+
+			await InvokeOnMainThreadAsync(() =>
+			{
+				var containerView = Assert.IsType<WrapperView>(handler.ContainerView);
+
+				Assert.Equal(expectedWhenEnabled, containerView.UserInteractionEnabled);
+
+				view.IsEnabled = false;
+				handler.UpdateValue(nameof(IView.IsEnabled));
+
+				Assert.False(containerView.UserInteractionEnabled);
+
+				view.IsEnabled = true;
+				handler.UpdateValue(nameof(IView.IsEnabled));
+
+				Assert.Equal(expectedWhenEnabled, containerView.UserInteractionEnabled);
 			});
 		}
 	}
