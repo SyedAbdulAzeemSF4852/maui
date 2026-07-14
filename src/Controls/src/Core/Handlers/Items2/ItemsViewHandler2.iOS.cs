@@ -126,18 +126,19 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 		internal static void MapIsEnabled(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)
 		{
 			(handler.Controller as SelectableItemsViewController2<ReorderableItemsView>)?.UpdateSelectionMode();
+			MapInputTransparent(handler, itemsView);
 		}
 
-		// CollectionView's native container must stay interactive even when the view's
-		// logical/cascaded IsEnabled is False (e.g. hosted inside a disabled RefreshView) —
-		// its own scrolling/selection is independently gated by its own IsEnabled-driven UI,
-		// not by this container flag. So unlike the generic UpdateInteractionState formula,
-		// this intentionally ignores IsEnabled and only reacts to InputTransparent.
+		// CollectionView's native container must stay interactive when IsEnabled is only
+		// cascaded False from a disabled parent (e.g. a disabled RefreshView) so nested
+		// content stays scrollable. But if the CollectionView itself was explicitly disabled
+		// (not just cascaded from a disabled parent), block interaction entirely.
 		internal static void MapInputTransparent(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)
 		{
 			if (handler.PlatformView is not null)
 			{
-				handler.PlatformView.UserInteractionEnabled = !itemsView.InputTransparent;
+				var explicitlyDisabled = !itemsView.IsEnabled && !itemsView.IsExplicitlyEnabled;
+				handler.PlatformView.UserInteractionEnabled = !itemsView.InputTransparent && !explicitlyDisabled;
 			}
 		}
 
