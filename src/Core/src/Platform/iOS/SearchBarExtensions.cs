@@ -63,7 +63,9 @@ namespace Microsoft.Maui.Platform
 
 		public static void UpdateIsEnabled(this UISearchBar uiSearchBar, ISearchBar searchBar)
 		{
-			uiSearchBar.UserInteractionEnabled = searchBar.IsEnabled;
+			// Funnel through the generic single-owner path so UserInteractionEnabled
+			// stays correctly derived from both IsEnabled and InputTransparent.
+			ViewExtensions.UpdateIsEnabled(uiSearchBar, searchBar);
 		}
 
 		public static void UpdateText(this UISearchBar uiSearchBar, ISearchBar searchBar)

@@ -34,8 +34,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 			[Controls.ItemsView.FlowDirectionProperty.PropertyName] = MapFlowDirection,
 			[Controls.ItemsView.IsVisibleProperty.PropertyName] = MapIsVisible,
 			[Controls.ItemsView.ItemsUpdatingScrollModeProperty.PropertyName] = MapItemsUpdatingScrollMode,
-			[nameof(IView.IsEnabled)] = MapIsEnabled,
-			[nameof(IView.InputTransparent)] = MapInputTransparent
+			[nameof(IView.IsEnabled)] = MapIsEnabled
 		};
 
 		UICollectionViewLayout _layout;
@@ -126,19 +125,12 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 		internal static void MapIsEnabled(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)
 		{
 			(handler.Controller as SelectableItemsViewController2<ReorderableItemsView>)?.UpdateSelectionMode();
-			MapInputTransparent(handler, itemsView);
-		}
 
-		// CollectionView's native container must stay interactive when IsEnabled is only
-		// cascaded False from a disabled parent (e.g. a disabled RefreshView) so nested
-		// content stays scrollable. But if the CollectionView itself was explicitly disabled
-		// (not just cascaded from a disabled parent), block interaction entirely.
-		internal static void MapInputTransparent(ItemsViewHandler2<TItemsView> handler, ItemsView itemsView)
-		{
+			// Funnel through the generic single-owner path so UserInteractionEnabled
+			// stays correctly derived from both IsEnabled and InputTransparent.
 			if (handler.PlatformView is not null)
 			{
-				var explicitlyDisabled = !itemsView.IsEnabled && !itemsView.IsExplicitlyEnabled;
-				handler.PlatformView.UserInteractionEnabled = !itemsView.InputTransparent && !explicitlyDisabled;
+				Microsoft.Maui.Platform.ViewExtensions.UpdateIsEnabled(handler.PlatformView, itemsView);
 			}
 		}
 

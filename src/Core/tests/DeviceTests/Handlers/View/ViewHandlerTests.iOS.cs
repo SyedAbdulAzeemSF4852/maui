@@ -1,7 +1,6 @@
 using System.Threading.Tasks;
 using Microsoft.Maui.DeviceTests.Stubs;
 using Microsoft.Maui.Handlers;
-using Microsoft.Maui.Platform;
 using Xunit;
 
 namespace Microsoft.Maui.DeviceTests
@@ -51,7 +50,6 @@ namespace Microsoft.Maui.DeviceTests
 				Assert.False(handler.PlatformView.UserInteractionEnabled);
 			});
 		}
-
 		[Theory]
 		[InlineData(false, true)]
 		[InlineData(true, false)]

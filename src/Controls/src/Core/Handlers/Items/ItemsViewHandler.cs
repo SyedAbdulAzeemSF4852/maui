@@ -31,7 +31,6 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			[Controls.ItemsView.ItemsUpdatingScrollModeProperty.PropertyName] = MapItemsUpdatingScrollMode,
 			#if IOS
 			[nameof(IView.IsEnabled)] = MapIsEnabled,
-			[nameof(IView.InputTransparent)] = MapInputTransparent,
 			#endif
 		};
 	}

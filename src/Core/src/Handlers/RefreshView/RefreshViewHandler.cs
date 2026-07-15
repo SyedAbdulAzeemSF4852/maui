@@ -22,9 +22,6 @@ namespace Microsoft.Maui.Handlers
 			[nameof(IRefreshView.IsRefreshEnabled)] = MapIsRefreshEnabled,
 			[nameof(IView.Background)] = MapBackground,
 			[nameof(IView.IsEnabled)] = MapIsEnabled,
-#if IOS || MACCATALYST
-			[nameof(IView.InputTransparent)] = MapInputTransparent,
-#endif
 		};
 
 		public static CommandMapper<IRefreshView, IRefreshViewHandler> CommandMapper = new(ViewCommandMapper)
