@@ -683,7 +683,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public override bool DispatchTouchEvent(MotionEvent e)
 		{
-			if (ItemsView?.IsEnabled == false && !ItemsView.IsExplicitlyEnabled)
+			if (ItemsView?.IsEnabled == false)
 			{
 				return base.DispatchTouchEvent(e);
 			}
