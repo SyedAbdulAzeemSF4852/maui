@@ -156,7 +156,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 				if (_headerUIView != null && _headerUIView.Frame.X != -headerWidth)
 				{
-					_headerUIView.Frame = new CGRect(-headerWidth, 0, headerWidth, CollectionView.Frame.Height);
+					// Use the actual measured height of the header view instead of the full CollectionView height
+					nfloat headerHeight = _headerUIView.Frame.Height;
+					_headerUIView.Frame = new CGRect(-headerWidth, 0, headerWidth, headerHeight);
 				}
 
 				if (_footerUIView != null && IsViewLoaded && View.Window != null)
@@ -167,7 +169,9 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 					if (currentFrame.X != footerX)
 					{
-						_footerUIView.Frame = new CGRect(footerX, 0, footerWidth, CollectionView.Frame.Height);
+						// Use the actual measured height of the footer view instead of the full CollectionView height
+						nfloat footerHeight = _footerUIView.Frame.Height;
+						_footerUIView.Frame = new CGRect(footerX, 0, footerWidth, footerHeight);
 					}
 				}
 			}
