@@ -7,7 +7,7 @@ public class Issue29394 : TestContentPage
     {
         var verticalStackLayout = new VerticalStackLayout()
         {
-            Padding = new Thickness(30, 0),
+            Padding = new Thickness(0, 0),
             Spacing = 25,
             VerticalOptions = LayoutOptions.Center
         };
