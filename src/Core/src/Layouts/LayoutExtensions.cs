@@ -74,24 +74,38 @@ namespace Microsoft.Maui.Layouts
 			var alignment = view.HorizontalLayoutAlignment;
 			var desiredWidth = view.DesiredSize.Width;
 
+			// Only clamp when Fill hasn't been rewritten to Center below; that rewritten case must
+			// keep its original overflow behavior (see clampNegativeSpace = false further down).
+			var clampNegativeSpace = true;
+
 			if (alignment == LayoutAlignment.Fill && (IsExplicitSet(view.Width) || !double.IsInfinity(view.MaximumWidth)))
 			{
 				// If the view has an explicit width (or non-infinite MaxWidth) set and the layout alignment is Fill,
 				// we just treat the view as centered within the space it "fills"
 				alignment = LayoutAlignment.Center;
+				clampNegativeSpace = false;
 
 				// If the width is not set, we use the minimum between the MaxWidth or the bound's width
 				desiredWidth = IsExplicitSet(view.Width) ? desiredWidth : Math.Min(bounds.Width, view.MaximumWidth);
 			}
 
-			return AlignHorizontal(bounds.X, margin.Left, margin.Right, bounds.Width, desiredWidth, alignment);
+			return AlignHorizontal(bounds.X, margin.Left, margin.Right, bounds.Width, desiredWidth, alignment, clampNegativeSpace);
 		}
 
 		static double AlignHorizontal(double startX, double startMargin, double endMargin, double boundsWidth,
-			double desiredWidth, LayoutAlignment horizontalLayoutAlignment)
+			double desiredWidth, LayoutAlignment horizontalLayoutAlignment, bool clampNegativeSpace = true)
 		{
 			double frameX = startX + startMargin;
-			var availableWidth = Math.Max(0, boundsWidth - desiredWidth);
+
+			// Only clamp when margin (not oversized content) causes the overflow, and only for a
+			// leading margin. Trailing-margin-only overflow should stay unclamped.
+			var marginThickness = startMargin + endMargin;
+			var desiredWidthWithoutMargin = desiredWidth - marginThickness;
+			var rawAvailableWidth = boundsWidth - desiredWidth;
+			var contentFitsWithoutMargin = boundsWidth - desiredWidthWithoutMargin >= 0;
+			var availableWidth = (clampNegativeSpace && rawAvailableWidth < 0 && contentFitsWithoutMargin && startMargin > 0)
+				? 0
+				: rawAvailableWidth;
 
 			switch (horizontalLayoutAlignment)
 			{
@@ -112,18 +126,32 @@ namespace Microsoft.Maui.Layouts
 			var alignment = view.VerticalLayoutAlignment;
 			var desiredHeight = view.DesiredSize.Height;
 
+			// Only clamp when Fill hasn't been rewritten to Center below; that rewritten case must
+			// keep its original overflow behavior (see clampNegativeSpace = false further down).
+			var clampNegativeSpace = true;
+
 			if (alignment == LayoutAlignment.Fill && (IsExplicitSet(view.Height) || !double.IsInfinity(view.MaximumHeight)))
 			{
 				// If the view has an explicit height (or non-infinite MaxHeight) set and the layout alignment is Fill,
 				// we just treat the view as centered within the space it "fills"
 				alignment = LayoutAlignment.Center;
+				clampNegativeSpace = false;
 
 				// If the height is not set, we use the minimum between the MaxHeight or the bound's height
 				desiredHeight = IsExplicitSet(view.Height) ? desiredHeight : Math.Min(bounds.Height, view.MaximumHeight);
 			}
 
 			double frameY = bounds.Y + margin.Top;
-			var availableHeight = Math.Max(0, bounds.Height - desiredHeight);
+
+			// Only clamp when margin (not oversized content) causes the overflow, and only for a
+			// leading margin. Trailing-margin-only overflow should stay unclamped.
+			var marginThickness = margin.Top + margin.Bottom;
+			var desiredHeightWithoutMargin = desiredHeight - marginThickness;
+			var rawAvailableHeight = bounds.Height - desiredHeight;
+			var contentFitsWithoutMargin = bounds.Height - desiredHeightWithoutMargin >= 0;
+			var availableHeight = (clampNegativeSpace && rawAvailableHeight < 0 && contentFitsWithoutMargin && margin.Top > 0)
+				? 0
+				: rawAvailableHeight;
 
 			switch (alignment)
 			{
