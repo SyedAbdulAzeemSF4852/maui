@@ -474,7 +474,7 @@ namespace Microsoft.Maui.Platform
 
 		void ProcessTouchMove(CGPoint point)
 		{
-			if (_contentView == null || !TouchInsideContent(point))
+			if (_contentView == null || (!_isSwiping && !TouchInsideContent(point)))
 				return;
 
 			if (!_isOpen)

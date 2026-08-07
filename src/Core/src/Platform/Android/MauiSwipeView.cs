@@ -90,8 +90,10 @@ namespace Microsoft.Maui.Platform
 		{
 			base.OnTouchEvent(e);
 
-			if (e?.Action == MotionEventActions.Move && !ShouldInterceptTouch(e))
+			if (e?.Action == MotionEventActions.Move && !_isSwiping && !ShouldInterceptTouch(e))
+			{
 				return true;
+			}
 
 			ProcessSwipingInteractions(e);
 
@@ -420,7 +422,7 @@ namespace Microsoft.Maui.Platform
 
 		bool ProcessTouchMove(APointF point)
 		{
-			if (_contentView == null || !TouchInsideContent(point) || _initialPoint == null)
+			if (_contentView == null || (!_isSwiping && !TouchInsideContent(point)) || _initialPoint == null)
 				return false;
 
 			if (!_isOpen)

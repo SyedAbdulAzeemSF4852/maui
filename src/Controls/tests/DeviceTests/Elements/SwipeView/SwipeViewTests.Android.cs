@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System;
+using System.ComponentModel;
 using System.Threading.Tasks;
 using Android.Views;
 using Microsoft.Maui.Controls;
@@ -226,6 +227,70 @@ namespace Microsoft.Maui.DeviceTests
 				var isEnabled = nativeView.Enabled;
 				Assert.Equal(expectedValue, isEnabled);
 			});
+		}
+
+		[Fact(DisplayName = "SwipeView Keeps Tracking And Can Be Closed After Pointer Leaves Bounds Vertically")]
+		public async Task SwipeViewTracksAndClosesAfterPointerLeavesBoundsVertically()
+		{
+			Grid content = new Grid
+			{
+				WidthRequest = 300,
+				HeightRequest = 60,
+				Background = new SolidPaint(Colors.White)
+			};
+
+			SwipeItem swipeItem = new SwipeItem
+			{
+				BackgroundColor = Colors.Red,
+			};
+
+			SwipeView swipeView = new SwipeView()
+			{
+				WidthRequest = 300,
+				HeightRequest = 60,
+				RightItems = new SwipeItems { swipeItem },
+				Content = content
+			};
+
+			SetupBuilder();
+
+			float openOffset = 0;
+			float offsetAfterAttemptedClose = 0;
+
+			var offsetField = typeof(MauiSwipeView).GetField(
+				"_swipeOffset", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			Assert.NotNull(offsetField);
+
+			var handleTouchInteractions = typeof(MauiSwipeView).GetMethod(
+				"HandleTouchInteractions", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+			Assert.NotNull(handleTouchInteractions);
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var handler = CreateHandler<SwipeViewHandler>(swipeView);
+				var nativeView = GetPlatformControl(handler);
+
+				await nativeView.AttachAndRun(() =>
+				{
+					void Dispatch(GestureStatus status, float x, float y) =>
+						handleTouchInteractions.Invoke(nativeView, new object[] { status, new global::Android.Graphics.PointF(x, y) });
+
+					Dispatch(GestureStatus.Started, 280, 30);
+					Dispatch(GestureStatus.Running, 130, 30);
+
+					openOffset = (float)offsetField.GetValue(nativeView);
+
+					Dispatch(GestureStatus.Running, 130, 500);
+					Dispatch(GestureStatus.Running, 275, 500);
+
+					offsetAfterAttemptedClose = (float)offsetField.GetValue(nativeView);
+					Dispatch(GestureStatus.Completed, 275, 500);
+				});
+			});
+
+			Assert.NotEqual(0, openOffset);
+			Assert.True(Math.Abs(offsetAfterAttemptedClose) < Math.Abs(openOffset),
+				$"Expected swipe offset to shrink after the closing drag (frozen bug would keep it near {openOffset}), but got {offsetAfterAttemptedClose}.");
 		}
 	}
 }
