@@ -42,52 +42,78 @@ public static class TimePickerExtensions
 
 		var cultureInfo = Culture.CurrentCulture;
 
-		if (string.IsNullOrEmpty(timePicker.Format))
-		{
-			NSLocale locale = new NSLocale(cultureInfo.TwoLetterISOLanguageName);
-
-			if (picker is not null)
-			{
-				picker.Locale = locale;
-			}
-		}
-
 		var time = timePicker.Time;
 		var format = timePicker.Format;
-
-		// Determine which culture to use for consistent formatting
-		CultureInfo formattingCulture;
-		if (format != null)
-		{
-			if (format.Contains('t', StringComparison.Ordinal) || format.Contains('h', StringComparison.Ordinal))
-			{
-				formattingCulture = new CultureInfo("en-US");
-			}	
-			else if (format.Contains('H', StringComparison.Ordinal))
-			{
-				formattingCulture = new CultureInfo("de-DE");
-			}
-			else
-			{
-				formattingCulture = cultureInfo;
-			}
-				
-		}
-		else
-		{
-			formattingCulture = cultureInfo;
-		}
+		var formattingCulture = GetFormattingCulture(format, cultureInfo);
 
 		// Apply the same culture to both the text display and the picker
 		mauiTimePicker.Text = time?.ToFormattedString(format ?? string.Empty, formattingCulture);
 
-		if (picker != null && format != null)
+		if (picker is not null)
 		{
-			picker.Locale = new NSLocale(formattingCulture.TwoLetterISOLanguageName);
+			picker.Locale = IsStandardTimeFormat(format)
+				? NSLocale.CurrentLocale
+				: new NSLocale(formattingCulture.TwoLetterISOLanguageName);
 		}
 
 		mauiTimePicker.UpdateCharacterSpacing(timePicker);
 	}
+
+	internal static CultureInfo GetFormattingCulture(string? format, CultureInfo cultureInfo)
+	{
+		if (IsStandardTimeFormat(format))
+		{
+			return cultureInfo;
+		}
+
+		bool has12HourSpecifier = false;
+		bool has24HourSpecifier = false;
+		char quote = '\0';
+		var customFormat = format!;
+
+		for (int i = 0; i < customFormat.Length; i++)
+		{
+			char character = customFormat[i];
+
+			if (character == '\\' && quote == '\0')
+			{
+				i++;
+				continue;
+			}
+
+			if (character is '\'' or '"')
+			{
+				if (quote == '\0')
+				{
+					quote = character;
+				}
+				else if (quote == character)
+				{
+					quote = '\0';
+				}
+
+				continue;
+			}
+
+			if (quote != '\0')
+			{
+				continue;
+			}
+
+			has12HourSpecifier |= character is 'h' or 't';
+			has24HourSpecifier |= character == 'H';
+		}
+
+		if (has12HourSpecifier)
+		{
+			return new CultureInfo("en-US");
+		}
+
+		return has24HourSpecifier ? new CultureInfo("de-DE") : cultureInfo;
+	}
+
+	internal static bool IsStandardTimeFormat(string? format) =>
+		string.IsNullOrEmpty(format) || format.Length == 1;
 
 	public static void UpdateTextAlignment(this MauiTimePicker textField, ITimePicker timePicker)
 	{

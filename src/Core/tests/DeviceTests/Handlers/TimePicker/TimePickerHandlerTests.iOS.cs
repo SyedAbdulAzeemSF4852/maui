@@ -1,6 +1,7 @@
 ﻿#if !MACCATALYST
 using System;
 using System.Threading.Tasks;
+using Foundation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.DeviceTests.Stubs;
 using Microsoft.Maui.Graphics;
@@ -13,6 +14,21 @@ namespace Microsoft.Maui.DeviceTests
 {
 	public partial class TimePickerHandlerTests
 	{
+		[Fact(DisplayName = "Default TimePicker format preserves native locale")]
+		public async Task DefaultTimePickerFormatPreservesNativeLocale()
+		{
+			var timePicker = new TimePickerStub
+			{
+				Format = "t",
+				Time = new TimeSpan(7, 30, 0)
+			};
+
+			var localeIdentifier = await GetValueAsync(timePicker, handler =>
+				GetNativeTimePicker(handler).Picker.Locale?.LocaleIdentifier);
+
+			Assert.Equal(NSLocale.CurrentLocale.LocaleIdentifier, localeIdentifier);
+		}
+
 		[Fact(DisplayName = "CharacterSpacing Initializes Correctly")]
 		public async Task CharacterSpacingInitializesCorrectly()
 		{
