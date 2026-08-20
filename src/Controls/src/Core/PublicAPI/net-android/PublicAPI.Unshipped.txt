@@ -27,3 +27,4 @@ override Microsoft.Maui.Controls.Handlers.Items.MauiRecyclerView<TItemsView, TAd
 ~override Microsoft.Maui.Controls.SwipeItems.OnPropertyChanged(string propertyName = null) -> void
 Microsoft.Maui.Controls.Label.~Label() -> void
 Microsoft.Maui.Controls.ShellContent.~ShellContent() -> void
+Microsoft.Maui.Controls.GradientBrush.~GradientBrush() -> void
