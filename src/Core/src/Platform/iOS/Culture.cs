@@ -26,7 +26,7 @@ namespace Microsoft.Maui.Platform
 						// (e.g. "en_US@rg=inzzzz"), which .NET cannot parse directly. Build the
 						// culture name from LanguageCode/ScriptCode/RegionCode instead, since
 						// RegionCode (unlike the identifier) resolves the "rg" override.
-						if (OperatingSystem.IsIOSVersionAtLeast(26) || OperatingSystem.IsMacCatalystVersionAtLeast(26))
+						if (OperatingSystem.IsIOSVersionAtLeast(26))
 						{
 							var languageCode = locale.LanguageCode;
 							var scriptCode = locale.ScriptCode;
