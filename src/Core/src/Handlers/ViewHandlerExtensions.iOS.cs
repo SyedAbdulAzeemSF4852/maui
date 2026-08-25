@@ -78,18 +78,21 @@ namespace Microsoft.Maui
 			widthConstraint = Math.Min(widthConstraint, virtualView.MaximumWidth);
 			heightConstraint = Math.Min(heightConstraint, virtualView.MaximumHeight);
 
+			// The constraints below get replaced by explicit requests for some platform views; keep the
+			// real available space so aspect-ratio driven sizes can still be clamped to what's on offer.
+			var availableWidth = widthConstraint;
+			var availableHeight = heightConstraint;
+
 			CGSize sizeThatFits;
 
 			// Calling SizeThatFits on an ImageView always returns the image's dimensions, so we need to call the extension method
 			// This also affects ImageButtons
 			if (platformView is UIImageView imageView)
 			{
-				var widthIsExplicit = IsExplicitSet(virtualView.Width);
-				var heightIsExplicit = IsExplicitSet(virtualView.Height);
-				widthConstraint = widthIsExplicit ? virtualView.Width : widthConstraint;
-				heightConstraint = heightIsExplicit ? virtualView.Height : heightConstraint;
+				widthConstraint = IsExplicitSet(virtualView.Width) ? virtualView.Width : widthConstraint;
+				heightConstraint = IsExplicitSet(virtualView.Height) ? virtualView.Height : heightConstraint;
 
-				sizeThatFits = imageView.SizeThatFitsImage(new CGSize((float)widthConstraint, (float)heightConstraint), default, widthIsExplicit, heightIsExplicit);
+				sizeThatFits = imageView.SizeThatFitsImage(new CGSize((float)widthConstraint, (float)heightConstraint));
 			}
 			else if (platformView is LayoutView || platformView is MauiLabel)
 			{
@@ -127,6 +130,16 @@ namespace Microsoft.Maui
 			var finalWidth = ResolveConstraints(size.Width, virtualView.Width, virtualView.MinimumWidth, virtualView.MaximumWidth);
 			var finalHeight = ResolveConstraints(size.Height, virtualView.Height, virtualView.MinimumHeight, virtualView.MaximumHeight);
 
+			// The width and height of an aspect-fit image are not independent; they're coupled by the image's
+			// aspect ratio. Resolving each axis separately loses that coupling, so an image with only an explicit
+			// HeightRequest (or only an explicit WidthRequest) ends up with the requested size on one axis and its
+			// native measurement on the other. Derive the free axis from the explicitly requested one instead.
+			if (platformView is UIImageView aspectFitImageView)
+			{
+				(finalWidth, finalHeight) = ResolveImageAspectRatio(
+					aspectFitImageView, virtualView, finalWidth, finalHeight, availableWidth, availableHeight);
+			}
+
 			return new Size(finalWidth, finalHeight);
 		}
 
@@ -160,6 +173,47 @@ namespace Microsoft.Maui
 			platformView.Bounds = new CGRect(platformView.Bounds.X, platformView.Bounds.Y, rect.Width, rect.Height);
 
 			viewHandler.Invoke(nameof(IView.Frame), rect);
+		}
+
+		// For a ScaleAspectFit image, an explicit request on one axis implies a size on the other axis via the
+		// image's aspect ratio. Only the axis that was NOT explicitly requested is recalculated; the explicit
+		// axis, Minimum/Maximum constraints, and the available space are all still honored.
+		static (double Width, double Height) ResolveImageAspectRatio(
+			UIImageView imageView,
+			IView virtualView,
+			double finalWidth,
+			double finalHeight,
+			double availableWidth,
+			double availableHeight)
+		{
+			if (imageView.ContentMode != UIViewContentMode.ScaleAspectFit || imageView.Image is not UIImage image)
+			{
+				return (finalWidth, finalHeight);
+			}
+
+			double imageWidth = image.Size.Width;
+			double imageHeight = image.Size.Height;
+
+			if (imageWidth <= 0 || imageHeight <= 0)
+			{
+				return (finalWidth, finalHeight);
+			}
+
+			var widthIsExplicit = IsExplicitSet(virtualView.Width);
+			var heightIsExplicit = IsExplicitSet(virtualView.Height);
+
+			if (heightIsExplicit && !widthIsExplicit && !double.IsInfinity(finalHeight))
+			{
+				var aspectWidth = Math.Min(finalHeight * (imageWidth / imageHeight), availableWidth);
+				finalWidth = ResolveConstraints(aspectWidth, virtualView.Width, virtualView.MinimumWidth, virtualView.MaximumWidth);
+			}
+			else if (widthIsExplicit && !heightIsExplicit && !double.IsInfinity(finalWidth))
+			{
+				var aspectHeight = Math.Min(finalWidth * (imageHeight / imageWidth), availableHeight);
+				finalHeight = ResolveConstraints(aspectHeight, virtualView.Height, virtualView.MinimumHeight, virtualView.MaximumHeight);
+			}
+
+			return (finalWidth, finalHeight);
 		}
 
 		internal static double ResolveConstraints(double measured, double exact, double min, double max)
