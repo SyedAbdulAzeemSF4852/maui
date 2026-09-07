@@ -27,6 +27,11 @@ internal static class LayoutFactory2
 	static NSCollectionLayoutBoundarySupplementaryItem[] CreateSupplementaryItems(LayoutGroupingInfo? groupingInfo, LayoutHeaderFooterInfo? layoutHeaderFooterInfo,
 		UICollectionViewScrollDirection scrollDirection, NSCollectionLayoutDimension width, NSCollectionLayoutDimension height)
 	{
+		// For horizontal layouts, use estimated dimensions for headers/footers instead of full group height
+		// This prevents headers/footers from being cropped when group height is fractional (full height)
+		var headerFooterWidth = scrollDirection == UICollectionViewScrollDirection.Horizontal ? NSCollectionLayoutDimension.CreateEstimated(30f) : width;
+		var headerFooterHeight = scrollDirection == UICollectionViewScrollDirection.Horizontal ? NSCollectionLayoutDimension.CreateEstimated(30f) : height;
+
 		if (groupingInfo is not null && groupingInfo.IsGrouped)
 		{
 			var items = new List<NSCollectionLayoutBoundarySupplementaryItem>();
@@ -34,7 +39,7 @@ internal static class LayoutFactory2
 			if (groupingInfo.HasHeader)
 			{
 				items.Add(NSCollectionLayoutBoundarySupplementaryItem.Create(
-					NSCollectionLayoutSize.Create(width, height),
+					NSCollectionLayoutSize.Create(headerFooterWidth, headerFooterHeight),
 					UICollectionElementKindSectionKey.Header.ToString(),
 					scrollDirection == UICollectionViewScrollDirection.Vertical
 						? NSRectAlignment.Top
@@ -44,7 +49,7 @@ internal static class LayoutFactory2
 			if (groupingInfo.HasFooter)
 			{
 				items.Add(NSCollectionLayoutBoundarySupplementaryItem.Create(
-					NSCollectionLayoutSize.Create(width, height),
+					NSCollectionLayoutSize.Create(headerFooterWidth, headerFooterHeight),
 					UICollectionElementKindSectionKey.Footer.ToString(),
 					scrollDirection == UICollectionViewScrollDirection.Vertical
 						? NSRectAlignment.Bottom
@@ -61,7 +66,7 @@ internal static class LayoutFactory2
 			if (layoutHeaderFooterInfo.HasHeader)
 			{
 				items.Add(NSCollectionLayoutBoundarySupplementaryItem.Create(
-					NSCollectionLayoutSize.Create(width, height),
+					NSCollectionLayoutSize.Create(headerFooterWidth, headerFooterHeight),
 					UICollectionElementKindSectionKey.Header.ToString(),
 					scrollDirection == UICollectionViewScrollDirection.Vertical
 						? NSRectAlignment.Top
@@ -72,7 +77,7 @@ internal static class LayoutFactory2
 			if (layoutHeaderFooterInfo.HasFooter)
 			{
 				items.Add(NSCollectionLayoutBoundarySupplementaryItem.Create(
-					NSCollectionLayoutSize.Create(width, height),
+					NSCollectionLayoutSize.Create(headerFooterWidth, headerFooterHeight),
 					UICollectionElementKindSectionKey.Footer.ToString(),
 					scrollDirection == UICollectionViewScrollDirection.Vertical
 						? NSRectAlignment.Bottom
