@@ -30,3 +30,4 @@ Microsoft.Maui.Controls.Label.~Label() -> void
 Microsoft.Maui.Controls.ShellContent.~ShellContent() -> void
 Microsoft.Maui.Controls.GradientBrush.~GradientBrush() -> void
 Microsoft.Maui.Controls.SwipeView.~SwipeView() -> void
+Microsoft.Maui.Controls.Shapes.TransformGroup.~TransformGroup() -> void
