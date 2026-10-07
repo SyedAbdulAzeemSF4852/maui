@@ -265,6 +265,7 @@ public class TitleBarViewModel : INotifyPropertyChanged
 				{
 					Source = "dotnet_bot.png",
 					HeightRequest = 60,
+					Margin = new Thickness(10, 0),
 					VerticalOptions = LayoutOptions.Center
 				} : null;
 			}
@@ -309,6 +310,7 @@ public class TitleBarViewModel : INotifyPropertyChanged
 				{
 					Source = "avatar.png",
 					CornerRadius = 5,
+					Margin = new Thickness(10, 0),
 					HeightRequest = 60,
 				} : null;
 			}
