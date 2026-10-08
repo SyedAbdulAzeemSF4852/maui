@@ -1,6 +1,6 @@
 namespace Maui.Controls.Sample.Issues;
 
-[Issue(IssueTracker.Github, 38276, "CollectionView does not update its rendered height after ItemsSource changes", PlatformAffected.iOS)]
+[Issue(IssueTracker.Github, 38276, "CollectionView does not update its rendered height after ItemsSource changes", PlatformAffected.iOS | PlatformAffected.macOS, issueTestNumber: 0)]
 public class Issue38276 : ContentPage
 {
 	const double MaximumCollectionHeight = 180;
@@ -49,12 +49,27 @@ public class Issue38276 : ContentPage
 		};
 		singleItemButton.Clicked += (sender, args) => collectionView.ItemsSource = CreateItems(1);
 
+		Button emptyItemsButton = new Button
+		{
+			AutomationId = "EmptyItemsButton",
+			Text = "Show no items"
+		};
+		emptyItemsButton.Clicked += (sender, args) => collectionView.ItemsSource = CreateItems(0);
+
+		Label afterCollectionLabel = new Label
+		{
+			AutomationId = "AfterCollectionLabel",
+			Text = "After collection"
+		};
+
 		var layout = new Grid
 		{
 			Padding = 20,
 			RowSpacing = 8,
 			RowDefinitions =
-			[
+		 	[
+				new RowDefinition(GridLength.Auto),
+				new RowDefinition(GridLength.Auto),
 				new RowDefinition(GridLength.Auto),
 				new RowDefinition(GridLength.Auto),
 				new RowDefinition(GridLength.Auto)
@@ -62,8 +77,10 @@ public class Issue38276 : ContentPage
 		};
 
 		layout.Add(collectionView, row: 0);
-		layout.Add(singleItemButton, row: 1);
-		layout.Add(largeItemsButton, row: 2);
+		layout.Add(afterCollectionLabel, row: 1);
+		layout.Add(emptyItemsButton, row: 2);
+		layout.Add(singleItemButton, row: 3);
+		layout.Add(largeItemsButton, row: 4);
 
 		Content = layout;
 	}
