@@ -382,7 +382,11 @@ namespace Microsoft.Maui.Controls.Handlers.Compatibility
 			else
 				(_flyoutView as IDisposable)?.Dispose();
 
-			// FragmentManager owns deferred destruction, which still reads IShellContext.Shell.
+			// Retain Element for deferred fragment destruction, but detach the handler so Shell reuse creates a new renderer.
+			if (ReferenceEquals(Element.Handler, this))
+			{
+				Element.Handler = null;
+			} 
 		}
 	}
 }
