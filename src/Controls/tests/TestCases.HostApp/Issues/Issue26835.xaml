@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Maui.Controls.Sample.Issues.Issue26835"
+             Title="Issue 26835">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        
+        <Label Grid.Row="0" 
+               Text="Horizontal Grid CollectionView with Header/Footer - Should show full header and footer without cropping" 
+               FontSize="16" 
+               Margin="10" />
+        
+        <CollectionView Grid.Row="1" 
+                        x:Name="CollectionView"
+                        AutomationId="HorizontalGridCollectionView"
+                        BackgroundColor="LightGray">
+            
+            <CollectionView.ItemsLayout>
+                <GridItemsLayout Span="3" 
+                                 Orientation="Horizontal" 
+                                 HorizontalItemSpacing="5" 
+                                 VerticalItemSpacing="5" />
+            </CollectionView.ItemsLayout>
+            
+            <CollectionView.Header>
+                <StackLayout BackgroundColor="Blue" Padding="10" AutomationId="CollectionViewHeader">
+                    <Label Text="HEADER CONTENT" 
+                           TextColor="White" 
+                           FontSize="18" 
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center" 
+                           AutomationId="HeaderTitle" />
+                    <Label Text="This header should be fully visible" 
+                           TextColor="White" 
+                           HorizontalOptions="Center" 
+                           AutomationId="HeaderSubtitle" />
+                    <Label Text="Line 3 of header content" 
+                           TextColor="White" 
+                           HorizontalOptions="Center" 
+                           AutomationId="HeaderLine3" />
+                </StackLayout>
+            </CollectionView.Header>
+            
+            <CollectionView.Footer>
+                <StackLayout BackgroundColor="Red" Padding="10" AutomationId="CollectionViewFooter">
+                    <Label Text="FOOTER CONTENT" 
+                           TextColor="White" 
+                           FontSize="18" 
+                           FontAttributes="Bold"
+                           HorizontalOptions="Center" 
+                           AutomationId="FooterTitle" />
+                    <Label Text="This footer should be fully visible" 
+                           TextColor="White" 
+                           HorizontalOptions="Center" 
+                           AutomationId="FooterSubtitle" />
+                    <Label Text="Line 3 of footer content" 
+                           TextColor="White" 
+                           HorizontalOptions="Center" 
+                           AutomationId="FooterLine3" />
+                </StackLayout>
+            </CollectionView.Footer>
+            
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <Grid BackgroundColor="LightBlue" HeightRequest="80" WidthRequest="80">
+                        <Label Text="{Binding .}" 
+                               HorizontalOptions="Center" 
+                               VerticalOptions="Center" 
+                               FontSize="14" />
+                    </Grid>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+            
+        </CollectionView>
+    </Grid>
+</ContentPage>
