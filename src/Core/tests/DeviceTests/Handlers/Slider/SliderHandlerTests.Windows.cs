@@ -89,34 +89,45 @@ namespace Microsoft.Maui.DeviceTests
 		}
 
 		[Theory]
-		[InlineData("red.png", 100, 100)]
-		[InlineData("black.png", 100, 100)]
-		public async Task ThumbImageSourceSizeIsCorrect(string filename, double thumbHeight, double thumbWidth)
+  		[InlineData("red.png")]
+  		[InlineData("black.png")]
+		public async Task ThumbImageSourceUsesDefaultSize(string filename)
 		{
-			var slider = new SliderStub
+			var defaultSlider = new SliderStub
 			{
 				Maximum = 10,
 				Minimum = 0,
 				Value = 5,
-				ThumbImageSource = new FileImageSourceStub("black.png"),
+			};
+
+			var imageSlider = new SliderStub
+			{
+				Maximum = 10,
+				Minimum = 0,
+				Value = 5,
+				ThumbImageSource = new FileImageSourceStub(filename),
 			};
 
 			await InvokeOnMainThreadAsync(async () =>
 			{
-				var handler = CreateHandler(slider);
+				var defaultHandler = CreateHandler(defaultSlider);
+				var imageHandler = CreateHandler(imageSlider);
+				var defaultThumbSize = Size.Zero;
 
-				await AssertEventually(() => ImageSourceLoaded(handler));
-
-				await handler.PlatformView.AttachAndRun(async () =>
+				await defaultHandler.PlatformView.AttachAndRun(() =>
 				{
-					// Update the Slider ThumbImageSource
-					slider.ThumbImageSource = new FileImageSourceStub(filename);
+					defaultThumbSize = GetNativeThumbSize(defaultHandler);
+					return Task.CompletedTask;
+				}, MauiContext);
 
+				await AssertEventually(() => ImageSourceLoaded(imageHandler));
+
+				await imageHandler.PlatformView.AttachAndRun(async () =>
+				{
 					await Task.Delay(100);
 
-					var nativeThumbSize = GetNativeThumbSize(handler);
-					Assert.Equal(nativeThumbSize.Height, thumbHeight);
-					Assert.Equal(nativeThumbSize.Width, thumbWidth);
+					var nativeThumbSize = GetNativeThumbSize(imageHandler);
+					Assert.Equal(defaultThumbSize, nativeThumbSize);
 				}, MauiContext);
 			});
 		}
