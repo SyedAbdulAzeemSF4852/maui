@@ -3,6 +3,7 @@ using System;
 using Microsoft.Maui.Controls.Internals;
 using Microsoft.Maui.Controls.Platform;
 using Microsoft.Maui.Graphics;
+using Microsoft.Maui.Platform;
 using Microsoft.UI.Dispatching;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -17,11 +18,35 @@ namespace Microsoft.Maui.Controls.Platform
 		IViewHandler _handler;
 		DataTemplate _currentTemplate;
 		bool _isMeasureInvalidationPending;
+		double _naturalItemWidth;
 
 		public ItemContentControl()
 		{
 			DefaultStyleKey = typeof(ItemContentControl);
 			IsTabStop = false;
+			Loaded += OnLoaded;
+		}
+
+		void OnLoaded(object sender, RoutedEventArgs e)
+		{
+			GetSizingGridView()?.ReportItemWidth(this, _naturalItemWidth);
+		}
+
+		FormsGridView GetSizingGridView()
+		{
+			if (ItemWidth == default &&
+			 FormsContainer is StructuredItemsView
+			 {
+				 ItemSizingStrategy: ItemSizingStrategy.MeasureAllItems,
+				 ItemsLayout: GridItemsLayout { Orientation: ItemsLayoutOrientation.Horizontal }
+			 } itemsView &&
+			 FormsDataTemplate == itemsView.ItemTemplate &&
+			 itemsView.Handler?.PlatformView is FormsGridView gridView)
+			{
+				return gridView;
+			}
+
+			return null;
 		}
 
 		public static readonly DependencyProperty MauiContextProperty = DependencyProperty.Register(
@@ -158,6 +183,7 @@ namespace Microsoft.Maui.Controls.Platform
 
 		internal void Realize()
 		{
+			_naturalItemWidth = 0;
 			var dataContext = FormsDataContext;
 			var dataTemplate = FormsDataTemplate;
 			var container = FormsContainer;
@@ -357,13 +383,28 @@ namespace Microsoft.Maui.Controls.Platform
 
 			var width = ItemWidth == default ? availableSize.Width : ItemWidth;
 			var height = ItemHeight == default ? availableSize.Height : ItemHeight;
+			var gridView = GetSizingGridView();
 
 			// I realize if ItemWidth and ItemHeight are set that this call seems pointless, but it's not.
 			// From what I can tell, calling `base.MeasureOverride` causes the `ContentControl` to realize its content
 			// and build its visual tree. So, in order to just play nice with the WinUI `ContentControl` we always
 			// call base.MeasureOverride, so that we don't short circuit whatever bookkeeping it needs to do.
 
-			var measureSize = base.MeasureOverride(new WSize(width, height));
+			// ItemsWrapGrid otherwise measures every cell with the first cell's width,
+			// preventing MeasureAllItems from discovering wider content.
+			var measureSize = base.MeasureOverride(new WSize(gridView != null ? double.PositiveInfinity : width, height));
+
+			if (gridView != null)
+			{
+				_naturalItemWidth = measureSize.Width;
+				gridView.ReportItemWidth(this, _naturalItemWidth);
+
+				if (double.IsFinite(width))
+				{
+					// Keep the content's final measure consistent with its native slot.
+					measureSize = base.MeasureOverride(new WSize(width, height));
+				}
+			}
 
 			return new WSize(Max(measureSize.Width, width), Max(measureSize.Height, height));
 		}

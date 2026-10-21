@@ -78,7 +78,10 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 
 		public static void MapItemSizingStrategy(StructuredItemsViewHandler<TItemsView> handler, StructuredItemsView itemsView)
 		{
-
+			if (handler.PlatformView is FormsGridView gridView)
+			{
+				gridView.ResetItemWidth();
+			}
 		}
 
 		protected override ListViewBase SelectListViewBase()
@@ -312,6 +315,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 		{
 			if (ListViewBase is FormsGridView formsGridView)
 			{
+				formsGridView.ResetItemWidth();
 				formsGridView.Span = ((GridItemsLayout)Layout).Span;
 			}
 		}
@@ -321,6 +325,7 @@ namespace Microsoft.Maui.Controls.Handlers.Items
 			if (ListViewBase is FormsGridView formsGridView && Layout is GridItemsLayout gridLayout)
 			{
 				formsGridView.ItemContainerStyle = GetItemContainerStyle(gridLayout);
+				formsGridView.ResetItemWidth();
 			}
 
 			if (Layout is LinearItemsLayout linearItemsLayout)

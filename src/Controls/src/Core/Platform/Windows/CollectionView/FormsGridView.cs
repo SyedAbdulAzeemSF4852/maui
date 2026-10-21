@@ -1,5 +1,6 @@
 #nullable disable
 using System;
+using System.Collections.Generic;
 using Microsoft.Maui.Graphics;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -19,6 +20,9 @@ namespace Microsoft.Maui.Controls.Platform
 		FrameworkElement _emptyView;
 		View _formsEmptyView;
 		Orientation _orientation;
+		double _desiredItemWidth;
+		bool _itemWidthUpdatePending;
+		readonly Dictionary<ItemContentControl, double> _pendingItemWidths = new();
 
 		public FormsGridView()
 		{
@@ -27,6 +31,7 @@ namespace Microsoft.Maui.Controls.Platform
 			DefaultStyleKey = typeof(FormsGridView);
 
 			RegisterPropertyChangedCallback(ItemsPanelProperty, ItemsPanelChanged);
+			RegisterPropertyChangedCallback(ItemTemplateProperty, ItemSizingChanged);
 
 			ChoosingItemContainer += OnChoosingItemContainer;
 		}
@@ -69,6 +74,7 @@ namespace Microsoft.Maui.Controls.Platform
 			get => _orientation;
 			set
 			{
+				ResetItemWidth();
 				_orientation = value;
 				if (_orientation == Orientation.Horizontal)
 				{
@@ -105,7 +111,106 @@ namespace Microsoft.Maui.Controls.Platform
 
 		void WrapGridSizeChanged(object sender, SizeChangedEventArgs e)
 		{
+			if (_orientation == Orientation.Horizontal && e.NewSize.Height != e.PreviousSize.Height)
+			{
+				ResetItemWidth();
+			}
+
 			UpdateItemSize();
+		}
+
+		void ItemSizingChanged(DependencyObject sender, DependencyProperty dp) => ResetItemWidth();
+
+		protected override void OnItemsChanged(object e)
+		{
+			base.OnItemsChanged(e);
+			ResetItemWidth();
+		}
+
+		internal void ResetItemWidth()
+		{
+			bool hasMeasuredWidth = _desiredItemWidth > 0;
+			_desiredItemWidth = 0;
+			_pendingItemWidths.Clear();
+
+			if (_orientation == Orientation.Horizontal && _wrapGrid != null)
+			{
+				if (hasMeasuredWidth)
+				{
+					_wrapGrid.ClearValue(ItemsWrapGrid.ItemWidthProperty);
+				}
+				_wrapGrid.InvalidateMeasure();
+
+				for (int i = 0; i < Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(_wrapGrid); i++)
+				{
+					if (Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(_wrapGrid, i) is GridViewItem container)
+					{
+						container.GetFirstDescendant<ItemContentControl>()?.InvalidateMeasure();
+					}
+				}
+			}
+		}
+
+		internal void ReportItemWidth(ItemContentControl content, double width)
+		{
+			if (_orientation != Orientation.Horizontal || !double.IsFinite(width) || width <= 0)
+			{
+				return;
+			}
+
+			if (_desiredItemWidth == 0 && _wrapGrid != null && !double.IsNaN(_wrapGrid.ItemWidth))
+			{
+				return;
+			}
+
+			_pendingItemWidths[content] = width;
+			ScheduleItemWidthUpdate();
+		}
+
+		void ScheduleItemWidthUpdate()
+		{
+			if (_itemWidthUpdatePending)
+			{
+				return;
+			}
+
+			// Changing the panel's cell size during a child's measure can invalidate the
+			// active layout pass. Coalesce requests from realized items after that pass.
+			_itemWidthUpdatePending = true;
+			if (!DispatcherQueue.TryEnqueue(ApplyItemWidth))
+			{
+				ApplyItemWidth();
+			}
+		}
+
+		void ApplyItemWidth()
+		{
+			_itemWidthUpdatePending = false;
+
+			foreach (var entry in _pendingItemWidths)
+			{
+				var content = entry.Key;
+				if (ContainerFromItem(content.DataContext) is not GridViewItem container ||
+				 container.GetFirstDescendant<ItemContentControl>() != content)
+				{
+					// The content retains its natural width and reports it again on Loaded.
+					continue;
+				}
+
+				var padding = container.Padding;
+				var border = container.BorderThickness;
+				var margin = container.Margin;
+				var width = Math.Max(container.MinWidth,
+				 entry.Value + padding.Left + padding.Right + border.Left + border.Right);
+				_desiredItemWidth = Math.Max(_desiredItemWidth, Math.Ceiling(width + margin.Left + margin.Right));
+			}
+			_pendingItemWidths.Clear();
+
+			if (_orientation == Orientation.Horizontal && _wrapGrid != null && _desiredItemWidth > 0 &&
+			 _wrapGrid.ItemWidth != _desiredItemWidth)
+			{
+				_wrapGrid.ItemWidth = _desiredItemWidth;
+			}
 		}
 
 		void UpdateItemSize()
@@ -116,6 +221,10 @@ namespace Microsoft.Maui.Controls.Platform
 			if (_orientation == Orientation.Horizontal)
 			{
 				_wrapGrid.ItemHeight = Math.Floor(_wrapGrid.ActualHeight / Span);
+				if (_desiredItemWidth > 0 && _wrapGrid.ItemWidth != _desiredItemWidth)
+				{
+					ScheduleItemWidthUpdate();
+				}
 			}
 			else
 			{
