@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
+using CoreFoundation;
 using CoreGraphics;
 using Microsoft.Maui.Graphics;
 using ObjCRuntime;
@@ -42,18 +43,62 @@ namespace Microsoft.Maui.Platform
 				{
 					if (_isRefreshing)
 					{
-						// Store the current scroll position when refresh starts
-						StoreCurrentScrollPosition();
-						TryOffsetRefresh(this, IsRefreshing);
-						_refreshControl.BeginRefreshing();
+						if (Window is null)
+						{
+							return;
+						}
+
+						BeginRefreshing();
 					}
 					else
 					{
-						_refreshControl.EndRefreshing();
-						TryOffsetRefresh(this, IsRefreshing);
+						EndRefreshing();
 					}
 				}
 			}
+		}
+
+		public override void MovedToWindow()
+		{
+			base.MovedToWindow();
+
+			if (Window is null)
+			{
+				if (_refreshControl.Refreshing)
+				{
+					UIView.PerformWithoutAnimation(EndRefreshing);
+				}
+
+				return;
+			}
+
+			if (!_isRefreshing)
+			{
+				return;
+			}
+
+			DispatchQueue.MainQueue.DispatchAsync(() =>
+			{
+				if (Window is null || !_isRefreshing || _refreshControl.Refreshing)
+				{
+					return;
+				}
+
+				BeginRefreshing();
+			});
+		}
+
+		void BeginRefreshing()
+		{
+			StoreCurrentScrollPosition();
+			TryOffsetRefresh(this, true);
+			_refreshControl.BeginRefreshing();
+		}
+
+		void EndRefreshing()
+		{
+			_refreshControl.EndRefreshing();
+			TryOffsetRefresh(this, false);
 		}
 
 		public void UpdateContent(IView? content, IMauiContext? mauiContext)
