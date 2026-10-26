@@ -245,6 +245,31 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 		}
 
 		[Fact]
+		public async Task PopWaitsForInFlightPlatformPushBeforeDismissing()
+		{
+			var (window, _, factory) = CreateWindowWithPlatform();
+			AttachRootPage(window);
+			var platform = (RecordingModalNavigationPlatform)factory.Created[0];
+			var pushCompletion = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+			platform.PushTaskBehavior = (_, _) => pushCompletion.Task;
+
+			var modal = new ContentPage();
+			var pushTask = window.Navigation.PushModalAsync(modal);
+			var popTask = window.Navigation.PopModalAsync();
+
+			Assert.False(popTask.IsCompleted);
+			Assert.Empty(platform.Operations);
+			Assert.Empty(platform.Popped);
+
+			pushCompletion.SetResult(null);
+			await Task.WhenAll(pushTask, popTask);
+
+			Assert.Equal(new[] { "Push:0", "Pop:0" }, platform.Operations);
+			Assert.Empty(window.Navigation.ModalStack);
+			Assert.Empty(Host(window).PlatformModalStack);
+		}
+
+		[Fact]
 		public async Task PlatformStackReflectsTheRequestedStateDuringPushAndPop()
 		{
 			var (window, _, factory) = CreateWindowWithPlatform();

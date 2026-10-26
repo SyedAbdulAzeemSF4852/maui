@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -25,6 +25,7 @@ namespace Microsoft.Maui.Controls.Platform
 		// request is removed from _modalPages as soon as the pop is requested, so without this the
 		// deferred reconciliation pass has nothing left to read the caller's intent from.
 		Dictionary<Page, bool> _pendingPopAnimations = new Dictionary<Page, bool>();
+		readonly Dictionary<Page, Task> _pendingPlatformPushes = new Dictionary<Page, Task>();
 
 		Page? _currentPage;
 
@@ -439,6 +440,25 @@ namespace Microsoft.Maui.Controls.Platform
 			return PushModalWithOverrideAsync(platformOverride, modal, animated);
 		}
 
+		async Task PushModalPlatformAndTrackAsync(Page modal, bool animated)
+		{
+			var pushTask = PushModalPlatformAsync(modal, animated);
+			_pendingPlatformPushes[modal] = pushTask;
+
+			try
+			{
+				await pushTask;
+			}
+			finally
+			{
+				if (_pendingPlatformPushes.TryGetValue(modal, out var pendingPush) &&
+					ReferenceEquals(pendingPush, pushTask))
+				{
+					_pendingPlatformPushes.Remove(modal);
+				}
+			}
+		}
+
 		async Task PushModalWithOverrideAsync(IModalNavigationPlatform platformOverride, Page modal, bool animated)
 		{
 			var generation = ScopeGeneration;
@@ -570,7 +590,7 @@ namespace Microsoft.Maui.Controls.Platform
 						var nextPage = nextRequest.Page;
 						bool animated = nextRequest.IsAnimated;
 
-						await PushModalPlatformAsync(nextPage, animated);
+						await PushModalPlatformAndTrackAsync(nextPage, animated);
 						syncAgain = true;
 					}
 				}
@@ -636,6 +656,11 @@ namespace Microsoft.Maui.Controls.Platform
 			else
 			{
 				CurrentPage?.SendAppearing();
+			}
+
+			if (_pendingPlatformPushes.TryGetValue(modal, out var pendingPush))
+			{
+				await pendingPush;
 			}
 
 			bool isPlatformReady = IsModalReady;
@@ -709,11 +734,11 @@ namespace Microsoft.Maui.Controls.Platform
 				if (ModalStack.Count == 0)
 				{
 					modal.NavigationProxy.Inner = _window.Navigation;
-					await PushModalPlatformAsync(modal, animated);
+					await PushModalPlatformAndTrackAsync(modal, animated);
 				}
 				else
 				{
-					await PushModalPlatformAsync(modal, animated);
+					await PushModalPlatformAndTrackAsync(modal, animated);
 					modal.NavigationProxy.Inner = _window.Navigation;
 				}
 			}
