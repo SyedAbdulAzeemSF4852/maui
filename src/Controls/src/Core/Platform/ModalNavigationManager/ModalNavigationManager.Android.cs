@@ -24,6 +24,7 @@ namespace Microsoft.Maui.Controls.Platform
 		ViewGroup? _modalParentView;
 		AAnimation? _dismissAnimation;
 		bool _platformActivated;
+		bool _isPresentingModal;
 
 		readonly Stack<string> _modals = [];
 
@@ -168,7 +169,18 @@ namespace Microsoft.Maui.Controls.Platform
 
 			_platformModalPages.Add(modal);
 
-			await PresentModal(modal, animated);
+			// A deferred animated pop must not replace the modal's pending entry animation.
+			_isPresentingModal = true;
+			try
+			{
+				await PresentModal(modal, animated);
+			}
+			finally
+			{
+				_isPresentingModal = false;
+			}
+
+			SyncModalStackWhenPlatformIsReady();
 
 			// The state of things might have changed after the modal view was pushed
 			if (IsModalReady)

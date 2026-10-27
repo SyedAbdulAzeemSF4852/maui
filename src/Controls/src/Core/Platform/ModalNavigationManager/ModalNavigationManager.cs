@@ -869,6 +869,7 @@ namespace Microsoft.Maui.Controls.Platform
 				bool result =
 					IsWindowReadyForModals
 #if ANDROID
+					&& !_isPresentingModal
 					&& _window?.Page?.IsLoadedOnPlatform() == true
 #endif
 					&& CurrentPlatformPage?.Handler is not null
