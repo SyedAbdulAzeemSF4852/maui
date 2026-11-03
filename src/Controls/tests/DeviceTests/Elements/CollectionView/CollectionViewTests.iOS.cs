@@ -22,6 +22,70 @@ namespace Microsoft.Maui.DeviceTests
 {
 	public partial class CollectionViewTests
 	{
+		[Theory]
+		[InlineData(double.PositiveInfinity)]
+		[InlineData(1400)]
+		public async Task ContentSizeChangesRespectMeasureConstraints(double heightConstraint)
+		{
+			EnsureHandlerCreated(builder =>
+			{
+				builder.ConfigureMauiHandlers(handlers =>
+					handlers.AddHandler<CollectionView, CollectionViewHandler2>());
+			});
+
+			await InvokeOnMainThreadAsync(async () =>
+			{
+				var collectionView = new MeasureInvalidationTrackingCollectionView();
+				var handler = await CreateHandlerAsync<CollectionViewHandler2>(collectionView);
+				var nativeCollectionView = handler.Controller.CollectionView;
+				var originalLayout = nativeCollectionView.CollectionViewLayout;
+				using var layout = new ControlledContentSizeLayout
+				{
+					ContentExtent = new CGSize(300, 1000)
+				};
+
+				try
+				{
+					nativeCollectionView.SetCollectionViewLayout(layout, false);
+					nativeCollectionView.Bounds = new CGRect(0, 0, 300, 300);
+					handler.GetDesiredSize(300, heightConstraint);
+
+					// Seed the previous extent above the stale bounds so initial measurement
+					// cannot hide the skipped-invalidation regression.
+					handler.Controller.ViewDidLayoutSubviews();
+					var invalidations = collectionView.MeasureInvalidations;
+
+					layout.ContentExtent = new CGSize(300, 1200);
+					handler.Controller.ViewDidLayoutSubviews();
+
+					Assert.Equal(1, collectionView.MeasureInvalidations - invalidations);
+				}
+				finally
+				{
+					nativeCollectionView.SetCollectionViewLayout(originalLayout, false);
+					((IElementHandler)handler).DisconnectHandler();
+				}
+			});
+		}
+
+		class MeasureInvalidationTrackingCollectionView : CollectionView
+		{
+			public int MeasureInvalidations { get; private set; }
+
+			protected override void InvalidateMeasureOverride()
+			{
+				MeasureInvalidations++;
+				base.InvalidateMeasureOverride();
+			}
+		}
+
+		class ControlledContentSizeLayout : UICollectionViewLayout
+		{
+			public CGSize ContentExtent { get; set; }
+
+			public override CGSize CollectionViewContentSize => ContentExtent;
+		}
+
 		[Fact(DisplayName = "Grouped CollectionView EmptyView Tracks Groups")]
 		public Task GroupedCollectionViewEmptyViewTracksGroups()
 		{

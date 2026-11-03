@@ -555,12 +555,15 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 					return;
 				}
 
-				var cvWidth = bounds.Width;
-				var cvHeight = bounds.Height;
+				// Native bounds can lag behind self-sizing content. Only the measure constraints
+				// tell us whether the parent limits growth (a ScrollView can offer infinite space).
+				var measureConstraints = (ItemsView.Handler as ItemsViewHandler2<TItemsView>)?.MeasureConstraints;
+				var cvWidth = measureConstraints?.Width ?? bounds.Width;
+				var cvHeight = measureConstraints?.Height ?? bounds.Height;
 				bool invalidate = false;
 
 				// If both the previous content size and the current content size are larger
-				// than the UICollectionView size, then we know that we're already maxed out and the 
+				// than the measure constraint, then we know that we're already maxed out and the
 				// CollectionView items are scrollable. There's no reason to force an invalidation
 				// of the CollectionView to expand/contract it.
 

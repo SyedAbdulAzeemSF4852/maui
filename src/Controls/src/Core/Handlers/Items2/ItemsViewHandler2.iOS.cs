@@ -40,10 +40,13 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 
 		UICollectionViewLayout _layout;
 
+		internal Size? MeasureConstraints { get; private set; }
+
 		protected override void DisconnectHandler(UIView platformView)
 		{
 			ItemsView.ScrollToRequested -= ScrollToRequested;
 			_layout = null;
+			MeasureConstraints = null;
 			Controller?.DisposeItemsSource();
 			Controller?.DisposeObserver();
 			base.DisconnectHandler(platformView);
@@ -272,14 +275,18 @@ namespace Microsoft.Maui.Controls.Handlers.Items2
 
 		public override Size GetDesiredSize(double widthConstraint, double heightConstraint)
 		{
+			IView virtualView = VirtualView;
+
+			MeasureConstraints = new Size(
+				ViewHandlerExtensions.ResolveConstraints(widthConstraint, virtualView.Width, virtualView.MinimumWidth, virtualView.MaximumWidth),
+				ViewHandlerExtensions.ResolveConstraints(heightConstraint, virtualView.Height, virtualView.MinimumHeight, virtualView.MaximumHeight));
+
 			var contentSize = Controller.GetSize();
 			contentSize = EnsureContentSizeForScrollDirection(widthConstraint, heightConstraint, contentSize);
 
 			// Our target size is the smaller of it and the constraints
 			var width = contentSize.Width <= widthConstraint ? contentSize.Width : widthConstraint;
 			var height = contentSize.Height <= heightConstraint ? contentSize.Height : heightConstraint;
-
-			IView virtualView = VirtualView;
 
 			width = ViewHandlerExtensions.ResolveConstraints(width, virtualView.Width, virtualView.MinimumWidth, virtualView.MaximumWidth);
 			height = ViewHandlerExtensions.ResolveConstraints(height, virtualView.Height, virtualView.MinimumHeight, virtualView.MaximumHeight);
