@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Maui.ApplicationModel;
@@ -18,10 +19,12 @@ namespace Microsoft.Maui
 		static readonly SizeInt32 DefaultMaximumSize = new SizeInt32(int.MaxValue, int.MaxValue);
 
 		readonly WindowMessageManager _windowManager;
+		readonly Queue<UI.Xaml.WindowActivatedEventArgs> _pendingActivationEvents = new();
 
 		IntPtr _windowIcon;
 		bool _enableResumeEvent;
 		bool _isActivated;
+		bool _isProcessingActivationEvents;
 		ViewManagement.UISettings _viewSettings;
 
 		public MauiWinUIWindow()
@@ -59,6 +62,27 @@ namespace Microsoft.Maui
 		}
 
 		protected virtual void OnActivated(object sender, UI.Xaml.WindowActivatedEventArgs args)
+		{
+			_pendingActivationEvents.Enqueue(args);
+
+			// Lifecycle handlers can pump window messages and re-enter this method.
+			// Finish the current transition before processing a nested transition.
+			if (_isProcessingActivationEvents)
+				return;
+
+			_isProcessingActivationEvents = true;
+			try
+			{
+				while (_pendingActivationEvents.Count > 0)
+					ProcessActivation(_pendingActivationEvents.Dequeue());
+			}
+			finally
+			{
+				_isProcessingActivationEvents = false;
+			}
+		}
+
+		void ProcessActivation(UI.Xaml.WindowActivatedEventArgs args)
 		{
 			if (args.WindowActivationState != UI.Xaml.WindowActivationState.Deactivated)
 			{
