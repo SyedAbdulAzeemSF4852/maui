@@ -8,7 +8,10 @@ namespace Microsoft.Maui.Handlers
 	{
 		protected override CheckBox CreatePlatformView()
 		{
-			var checkBox = new CheckBox();
+			var checkBox = new CheckBox
+			{
+				IsThreeState = false
+			};
 
 			AdjustCheckBoxForNoText(checkBox);
 
@@ -68,13 +71,7 @@ namespace Microsoft.Maui.Handlers
 			handler.PlatformView?.UpdateIsChecked(check);
 		}
 
-		public static partial void MapIsThreeState(ICheckBoxHandler handler, ICheckBox check)
-		{
-			if (handler.PlatformView is { } platformView)
-			{
-				platformView.IsThreeState = false;
-			}
-		}
+		public static partial void MapIsThreeState(ICheckBoxHandler handler, ICheckBox check) { }
 
 		public static partial void MapForeground(ICheckBoxHandler handler, ICheckBox check)
 		{

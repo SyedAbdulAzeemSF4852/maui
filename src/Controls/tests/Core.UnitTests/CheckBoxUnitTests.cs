@@ -63,6 +63,28 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 		}
 
 		[Fact]
+		public void ThreeStateFlagBindingUpdatesBothDirectionsAndClearsMixedState()
+		{
+			var source = new CheckBox { IsThreeState = true };
+			var target = new CheckBox();
+			target.SetBinding(CheckBox.IsThreeStateProperty, static (CheckBox value) => value.IsThreeState,
+				source: source);
+			Assert.True(target.IsThreeState);
+
+			target.IsChecked = null;
+			target.IsThreeState = false;
+			Assert.False(source.IsThreeState);
+			Assert.False(target.IsChecked);
+
+			source.IsThreeState = true;
+			Assert.True(target.IsThreeState);
+			target.IsChecked = null;
+			source.IsThreeState = false;
+			Assert.False(target.IsThreeState);
+			Assert.False(target.IsChecked);
+		}
+
+		[Fact]
 		public void DisablingThreeStateResetsMixedOnceWithoutReplacingBinding()
 		{
 			var source = new CheckBox { IsThreeState = true };

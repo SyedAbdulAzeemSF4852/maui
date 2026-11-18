@@ -21,7 +21,6 @@ namespace Microsoft.Maui.Handlers
 
 		protected override void ConnectHandler(AppCompatCheckBox platformView)
 		{
-			base.ConnectHandler(platformView);
 			if (platformView is MaterialCheckBox materialCheckBox)
 			{
 				materialCheckBox.CheckedStateChanged += OnCheckedStateChanged;
@@ -42,8 +41,6 @@ namespace Microsoft.Maui.Handlers
 			{
 				platformView.CheckedChange -= OnCheckedChange;
 			}
-
-			base.DisconnectHandler(platformView);
 		}
 
 		// This is an Android-specific mapping

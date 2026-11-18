@@ -68,8 +68,7 @@ namespace Microsoft.Maui.Controls
 						checkBox.SetValueCore(IsCheckedProperty, BooleanBoxes.FalseBox, SetValueFlags.None,
 							SetValuePrivateFlags.Default, context.Values.GetSpecificity());
 					}
-				},
-				defaultBindingMode: BindingMode.OneWay);
+				}, defaultBindingMode: BindingMode.TwoWay);
 
 		/// <summary>Bindable property for the <see cref="Command"/> property.</summary>
 		public static readonly BindableProperty CommandProperty = BindableProperty.Create(nameof(Command), typeof(ICommand), typeof(CheckBox), null, propertyChanging: CommandElement.OnCommandChanging, propertyChanged: CommandElement.OnCommandChanged);
