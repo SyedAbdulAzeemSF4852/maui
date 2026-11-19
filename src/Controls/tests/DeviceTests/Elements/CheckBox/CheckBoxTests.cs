@@ -23,6 +23,93 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 
+		CheckBoxHandler CreateThreeStateHandler(CheckBox checkBox)
+		{
+#if ANDROID
+			return CreateHandler<Material3CheckBoxHandler>(checkBox);
+#else
+			return CreateHandler<CheckBoxHandler>(checkBox);
+#endif
+		}
+
+		[Theory]
+		[InlineData(false, true)]
+		[InlineData(true, false)]
+		[InlineData(null, false)]
+		public Task NullableStateMapsAndActivationNotifiesOnce(bool? initial, bool expected)
+		{
+			SetupBuilder();
+			return InvokeOnMainThreadAsync(() =>
+			{
+				var checkBox = new CheckBox { IsThreeState = true, IsChecked = initial };
+				var events = 0;
+				var commands = 0;
+				checkBox.CheckedChanged += (_, e) =>
+				{
+					Assert.Equal(checkBox.IsChecked, e.CheckedValue);
+					events++;
+				};
+				checkBox.Command = new Command(() => commands++);
+				var handler = CreateThreeStateHandler(checkBox);
+
+				Assert.Equal(initial, GetNativeCheckedState(handler));
+				Assert.Equal(initial, checkBox.IsChecked);
+				Assert.Equal(0, events);
+				Assert.Equal(0, commands);
+
+				ActivateNativeCheckBox(handler);
+
+				Assert.Equal((bool?)expected, checkBox.IsChecked);
+				Assert.Equal(checkBox.IsChecked, GetNativeCheckedState(handler));
+				Assert.Equal(1, events);
+				Assert.Equal(1, commands);
+
+				ActivateNativeCheckBox(handler);
+
+				Assert.Equal((bool?)!expected, checkBox.IsChecked);
+				Assert.Equal(checkBox.IsChecked, GetNativeCheckedState(handler));
+				Assert.Equal(2, events);
+				Assert.Equal(2, commands);
+
+				checkBox.IsChecked = null;
+				checkBox.IsChecked = null;
+				Assert.Null(GetNativeCheckedState(handler));
+				Assert.Equal(3, events);
+				Assert.Equal(3, commands);
+			});
+		}
+
+		[Fact]
+		public Task DisabledActivationPreservesIndeterminateState()
+		{
+			SetupBuilder();
+			return InvokeOnMainThreadAsync(() =>
+			{
+				var checkBox = new CheckBox { IsThreeState = true, IsChecked = null, IsEnabled = false };
+				var events = 0;
+				var commands = 0;
+				checkBox.CheckedChanged += (_, _) => events++;
+				checkBox.Command = new Command(() => commands++);
+				var handler = CreateThreeStateHandler(checkBox);
+				Assert.Null(GetNativeCheckedState(handler));
+
+				ActivateNativeCheckBox(handler);
+
+				Assert.Null(checkBox.IsChecked);
+				Assert.Null(GetNativeCheckedState(handler));
+				Assert.Equal(0, events);
+				Assert.Equal(0, commands);
+
+				checkBox.IsEnabled = true;
+				ActivateNativeCheckBox(handler);
+
+				Assert.False(checkBox.IsChecked);
+				Assert.Equal((bool?)false, GetNativeCheckedState(handler));
+				Assert.Equal(1, events);
+				Assert.Equal(1, commands);
+			});
+		}
+
 		[Theory("Checkbox Background Updates Correctly With BackgroundColor Property"
 #if WINDOWS
 			,Skip = "Failing"

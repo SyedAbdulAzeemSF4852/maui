@@ -11,6 +11,33 @@ namespace Microsoft.Maui.DeviceTests
 {
 	public partial class CheckBoxHandlerTests
 	{
+		[Theory]
+		[InlineData(false, true)]
+		[InlineData(true, false)]
+		[InlineData(null, false)]
+		public Task UserActivationKeepsCheckedStateBinary(bool? initial, bool expected) =>
+			InvokeOnMainThreadAsync(() =>
+			{
+				using var checkBox = new MauiCheckBox
+				{
+					IsThreeState = true,
+					IsChecked = initial,
+					IsEnabled = true
+				};
+				var events = 0;
+				checkBox.CheckedChanged += (_, _) => events++;
+
+				checkBox.SendActionForControlEvents(UIControlEvent.TouchUpInside);
+
+				Assert.Equal((bool?)expected, checkBox.IsChecked);
+				Assert.Equal(1, events);
+
+				checkBox.SendActionForControlEvents(UIControlEvent.TouchUpInside);
+
+				Assert.Equal((bool?)!expected, checkBox.IsChecked);
+				Assert.Equal(2, events);
+			});
+
 		[Fact(DisplayName = "Accessibility Value Sets Correctly")]
 		public async Task AccessibilityValueSetsCorrectly()
 		{
@@ -51,8 +78,12 @@ namespace Microsoft.Maui.DeviceTests
 		MauiCheckBox GetNativeCheckBox(CheckBoxHandler checkBoxHandler) =>
 			(MauiCheckBox)checkBoxHandler.PlatformView;
 
-		bool GetNativeIsChecked(CheckBoxHandler checkBoxHandler) =>
-			GetNativeCheckBox(checkBoxHandler).IsChecked == true;
+		bool GetNativeIsChecked(CheckBoxHandler checkBoxHandler)
+		{
+			var value = GetNativeCheckBox(checkBoxHandler).IsChecked;
+			Assert.True(value.HasValue);
+			return value.Value;
+		}
 
 		async Task ValidateColor(ICheckBox checkBoxStub, Color color, Action action = null)
 		{

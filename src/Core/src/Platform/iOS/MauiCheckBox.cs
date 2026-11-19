@@ -53,13 +53,14 @@ namespace Microsoft.Maui.Platform
 
 		void OnTouchUpInside(object? sender, EventArgs e)
 		{
-			IsChecked = IsChecked != true;
+			IsChecked = IsChecked == false;
 			_weakEventManager.HandleEvent(this, e, nameof(CheckedChanged));
 		}
 
 		internal float MinimumViewSize { get; set; }
 
 		/// <summary>Gets or sets the checked state, or null for indeterminate.</summary>
+		/// <remarks>User activation changes an indeterminate state to unchecked.</remarks>
 		public bool? IsChecked
 		{
 			get => _isChecked;
