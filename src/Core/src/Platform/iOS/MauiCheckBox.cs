@@ -24,7 +24,7 @@ namespace Microsoft.Maui.Platform
 		UIAccessibilityTrait _accessibilityTraits;
 
 		Color? _tintColor;
-		bool? _isChecked = false;
+		CheckBoxState _checkState;
 		bool _isEnabled;
 		bool _disposed;
 
@@ -58,28 +58,35 @@ namespace Microsoft.Maui.Platform
 				return;
 			}
 
-			IsChecked = IsChecked switch
+			CheckState = CheckState switch
 			{
-				false => true,
-				true when IsThreeState => null,
-				_ => false
+				CheckBoxState.Unchecked => CheckBoxState.Checked,
+				CheckBoxState.Checked when IsThreeState => CheckBoxState.Indeterminate,
+				_ => CheckBoxState.Unchecked
 			};
 			_weakEventManager.HandleEvent(this, e, nameof(CheckedChanged));
 		}
 
 		internal float MinimumViewSize { get; set; }
 
-		/// <summary>Gets or sets the checked state, or null for indeterminate.</summary>
-		/// <remarks>State changes crossfade when attached to a window unless Reduce Motion is enabled.</remarks>
-		public bool? IsChecked
+		/// <summary>Gets or sets the Boolean checked state.</summary>
+		public bool IsChecked
 		{
-			get => _isChecked;
+			get => CheckState == CheckBoxState.Checked;
+			set => CheckState = value ? CheckBoxState.Checked : CheckBoxState.Unchecked;
+		}
+
+		/// <summary>Gets or sets the complete checkbox state.</summary>
+		/// <remarks>State changes crossfade when attached to a window unless Reduce Motion is enabled.</remarks>
+		public CheckBoxState CheckState
+		{
+			get => _checkState;
 			set
 			{
-				if (value == _isChecked)
+				if (value == _checkState)
 					return;
 
-				_isChecked = value;
+				_checkState = value;
 				if (Window != null && !UIAccessibility.IsReduceMotionEnabled)
 				{
 					UIView.Transition(this, 0.2,
@@ -174,7 +181,7 @@ namespace Microsoft.Maui.Platform
 			// and I don't know how to make it not tint them gray
 			if (!Enabled && CheckBoxTintColor != null)
 			{
-				if (IsChecked is null)
+				if (CheckState == CheckBoxState.Indeterminate)
 				{
 					return IndeterminateDisabledAndTinted ??=
 						CreateCheckBox(CreateIndeterminateMark()).ImageWithRenderingMode(UIImageRenderingMode.AlwaysOriginal);
@@ -194,11 +201,11 @@ namespace Microsoft.Maui.Platform
 			Unchecked ??= CreateCheckBox(null).ImageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate);
 			Indeterminate ??= CreateCheckBox(CreateIndeterminateMark()).ImageWithRenderingMode(UIImageRenderingMode.AlwaysTemplate);
 
-			return IsChecked switch
+			return CheckState switch
 			{
-				true => Checked,
-				false => Unchecked,
-				null => Indeterminate
+				CheckBoxState.Checked => Checked,
+				CheckBoxState.Indeterminate => Indeterminate,
+				_ => Unchecked
 			};
 		}
 
@@ -374,11 +381,11 @@ namespace Microsoft.Maui.Platform
 
 		public override string? AccessibilityValue
 		{
-			get => IsChecked switch
+			get => CheckState switch
 			{
-				true => "1",
-				false => "0",
-				null => NSBundle.FromIdentifier("com.apple.UIKit")?.GetLocalizedString("Mixed") ?? "Mixed"
+				CheckBoxState.Checked => "1",
+				CheckBoxState.Indeterminate => NSBundle.FromIdentifier("com.apple.UIKit")?.GetLocalizedString("Mixed") ?? "Mixed",
+				_ => "0"
 			};
 			set { }
 		}

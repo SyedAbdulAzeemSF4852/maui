@@ -86,7 +86,12 @@ namespace Microsoft.Maui.Handlers
 		{
 			if (sender is MauiCheckBox platformView && VirtualView != null)
 			{
-				SetCheckedState(VirtualView, platformView.IsChecked);
+				SetCheckedState(VirtualView, platformView.CheckState switch
+				{
+					CheckBoxState.Checked => true,
+					CheckBoxState.Indeterminate => null,
+					_ => false
+				});
 			}
 		}
 	}

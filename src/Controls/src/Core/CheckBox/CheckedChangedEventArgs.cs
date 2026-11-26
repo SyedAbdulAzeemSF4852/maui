@@ -11,19 +11,9 @@ namespace Microsoft.Maui.Controls
 		public CheckedChangedEventArgs(bool value)
 		{
 			Value = value;
-			CheckedValue = value;
 		}
 
-		internal CheckedChangedEventArgs(bool? value)
-		{
-			CheckedValue = value;
-			Value = value == true;
-		}
-
-		/// <summary>Gets true only when checked; false when unchecked or indeterminate.</summary>
+		/// <summary>Gets whether the checkbox is checked.</summary>
 		public bool Value { get; private set; }
-
-		/// <summary>Gets the complete checked state, or null when indeterminate.</summary>
-		public bool? CheckedValue { get; }
 	}
 }

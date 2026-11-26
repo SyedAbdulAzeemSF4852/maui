@@ -26,22 +26,22 @@ public partial class AbsoluteLayoutOptionsPage : ContentPage
 	{
 		AbsoluteLayoutFlags flags = AbsoluteLayoutFlags.None;
 
-		if (chkX.IsChecked == true)
+		if (chkX.IsChecked)
 			flags |= AbsoluteLayoutFlags.XProportional;
-		if (chkY.IsChecked == true)
+		if (chkY.IsChecked)
 			flags |= AbsoluteLayoutFlags.YProportional;
-		if (chkWidth.IsChecked == true)
+		if (chkWidth.IsChecked)
 			flags |= AbsoluteLayoutFlags.WidthProportional;
-		if (chkHeight.IsChecked == true)
+		if (chkHeight.IsChecked)
 			flags |= AbsoluteLayoutFlags.HeightProportional;
-		if (chkPosition.IsChecked == true)
+		if (chkPosition.IsChecked)
 			flags |= AbsoluteLayoutFlags.PositionProportional;
-		if (chkSize.IsChecked == true)
+		if (chkSize.IsChecked)
 			flags |= AbsoluteLayoutFlags.SizeProportional;
-		if (chkAll.IsChecked == true)
+		if (chkAll.IsChecked)
 			flags |= AbsoluteLayoutFlags.All;
 
-		if (chkNone.IsChecked == true)
+		if (chkNone.IsChecked)
 			flags = AbsoluteLayoutFlags.None;
 
 		_viewModel.LayoutFlags = flags;

@@ -43,13 +43,13 @@ namespace Microsoft.Maui.DeviceTests
 			SetupBuilder();
 			return InvokeOnMainThreadAsync(() =>
 			{
-				var checkBox = new CheckBox { IsThreeState = threeState, IsChecked = initial };
-				var handler = CreateThreeStateHandler(checkBox);
+				var checkBox = new CheckBox { IsThreeState = threeState, CheckState = ToCheckState(initial) };
+				CheckBoxHandler handler = CreateHandler<Material3CheckBoxHandler>(checkBox);
 				var clicks = 0;
 				EventHandler onClick = (_, _) =>
 				{
-					Assert.Equal(expected, checkBox.IsChecked);
-					Assert.Equal(checkBox.IsChecked, GetNativeCheckedState(handler));
+					Assert.Equal(expected, GetCheckedValue(checkBox));
+					Assert.Equal(GetCheckedValue(checkBox), GetNativeCheckedState(handler));
 					clicks++;
 				};
 				handler.PlatformView.Click += onClick;

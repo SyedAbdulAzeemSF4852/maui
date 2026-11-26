@@ -23,14 +23,22 @@ namespace Microsoft.Maui.DeviceTests
 			});
 		}
 
-		CheckBoxHandler CreateThreeStateHandler(CheckBox checkBox)
+		CheckBoxHandler CreateThreeStateHandler(CheckBox checkBox) =>
+			CreateHandler<CheckBoxHandler>(checkBox);
+
+		static CheckBoxState ToCheckState(bool? value) => value switch
 		{
-#if ANDROID
-			return CreateHandler<Material3CheckBoxHandler>(checkBox);
-#else
-			return CreateHandler<CheckBoxHandler>(checkBox);
-#endif
-		}
+			true => CheckBoxState.Checked,
+			false => CheckBoxState.Unchecked,
+			null => CheckBoxState.Indeterminate
+		};
+
+		static bool? GetCheckedValue(CheckBox checkBox) => checkBox.CheckState switch
+		{
+			CheckBoxState.Checked => true,
+			CheckBoxState.Indeterminate => null,
+			_ => false
+		};
 
 		[Theory]
 		[InlineData(true, false, true, null, false)]
@@ -38,47 +46,54 @@ namespace Microsoft.Maui.DeviceTests
 		[InlineData(true, null, false, true, null)]
 		[InlineData(false, false, true, false, true)]
 		[InlineData(false, true, false, true, false)]
-		public Task NullableStateMapsAndActivationNotifiesOnce(bool threeState, bool? initial, bool? first, bool? second, bool? third)
+		public Task CompleteStateMapsAndActivationNotifiesOnce(bool threeState, bool? initial, bool? first, bool? second, bool? third)
 		{
 			SetupBuilder();
 			return InvokeOnMainThreadAsync(() =>
 			{
-				var checkBox = new CheckBox { IsThreeState = threeState, IsChecked = initial };
+				var checkBox = new CheckBox { IsThreeState = threeState, CheckState = ToCheckState(initial) };
 				var events = 0;
 				var commands = 0;
-				checkBox.CheckedChanged += (_, e) =>
+				checkBox.CheckStateChanged += (_, e) =>
 				{
-					Assert.Equal(checkBox.IsChecked, e.CheckedValue);
+					Assert.Equal(checkBox.CheckState, e.Value);
 					events++;
 				};
 				checkBox.Command = new Command(() => commands++);
 				var handler = CreateThreeStateHandler(checkBox);
 
 				Assert.Equal(initial, GetNativeCheckedState(handler));
-				Assert.Equal(initial, checkBox.IsChecked);
+				Assert.Equal(initial, GetCheckedValue(checkBox));
 				Assert.Equal(0, events);
 				Assert.Equal(0, commands);
 
 				var activations = 0;
+				var expectedCommands = 0;
+				var previousIsChecked = initial == true;
 				foreach (var expected in new[] { first, second, third })
 				{
 					ActivateNativeCheckBox(handler);
 					activations++;
+					if (previousIsChecked != (expected == true))
+						expectedCommands++;
+					previousIsChecked = expected == true;
 
-					Assert.Equal(expected, checkBox.IsChecked);
+					Assert.Equal(expected, GetCheckedValue(checkBox));
 					Assert.Equal(expected, GetNativeCheckedState(handler));
 					Assert.Equal(activations, events);
-					Assert.Equal(activations, commands);
+					Assert.Equal(expectedCommands, commands);
 				}
 
 				bool? assignedState = threeState ? null : false;
 				var expectedNotifications = activations + (third == assignedState ? 0 : 1);
-				checkBox.IsChecked = null;
-				checkBox.IsChecked = null;
-				Assert.Equal(assignedState, checkBox.IsChecked);
+				if ((third == true) != (assignedState == true))
+					expectedCommands++;
+				checkBox.CheckState = CheckBoxState.Indeterminate;
+				checkBox.CheckState = CheckBoxState.Indeterminate;
+				Assert.Equal(assignedState, GetCheckedValue(checkBox));
 				Assert.Equal(assignedState, GetNativeCheckedState(handler));
 				Assert.Equal(expectedNotifications, events);
-				Assert.Equal(expectedNotifications, commands);
+				Assert.Equal(expectedCommands, commands);
 			});
 		}
 
@@ -94,7 +109,7 @@ namespace Microsoft.Maui.DeviceTests
 				var handler = CreateThreeStateHandler(checkBox);
 				var events = 0;
 				var commands = 0;
-				checkBox.CheckedChanged += (_, _) => events++;
+				checkBox.CheckStateChanged += (_, _) => events++;
 				checkBox.Command = new Command(() => commands++);
 
 				checkBox.IsThreeState = !initialThreeState;
@@ -108,7 +123,7 @@ namespace Microsoft.Maui.DeviceTests
 
 				ActivateNativeCheckBox(handler);
 				bool? expected = initialThreeState ? false : null;
-				Assert.Equal(expected, checkBox.IsChecked);
+				Assert.Equal(expected, GetCheckedValue(checkBox));
 				Assert.Equal(expected, GetNativeCheckedState(handler));
 				Assert.Equal(2, events);
 				Assert.Equal(2, commands);
@@ -125,16 +140,16 @@ namespace Microsoft.Maui.DeviceTests
 				var handler = CreateThreeStateHandler(checkBox);
 				var events = 0;
 				var commands = 0;
-				checkBox.CheckedChanged += (_, e) =>
+				checkBox.CheckStateChanged += (_, e) =>
 				{
-					Assert.Equal(checkBox.IsChecked, e.CheckedValue);
+					Assert.Equal(checkBox.CheckState, e.Value);
 					events++;
 				};
 				checkBox.Command = new Command(() => commands++);
 
 				ActivateNativeCheckBox(handler);
 				ActivateNativeCheckBox(handler);
-				Assert.Null(checkBox.IsChecked);
+				Assert.Equal(CheckBoxState.Indeterminate, checkBox.CheckState);
 				Assert.Null(GetNativeCheckedState(handler));
 				Assert.Equal(2, events);
 				Assert.Equal(2, commands);
@@ -144,19 +159,19 @@ namespace Microsoft.Maui.DeviceTests
 				Assert.False(checkBox.IsChecked);
 				Assert.Equal((bool?)false, GetNativeCheckedState(handler));
 				Assert.Equal(3, events);
-				Assert.Equal(3, commands);
+				Assert.Equal(2, commands);
 
 				ActivateNativeCheckBox(handler);
 				Assert.True(checkBox.IsChecked);
 				Assert.Equal((bool?)true, GetNativeCheckedState(handler));
 				Assert.Equal(4, events);
-				Assert.Equal(4, commands);
+				Assert.Equal(3, commands);
 
 				ActivateNativeCheckBox(handler);
 				Assert.False(checkBox.IsChecked);
 				Assert.Equal((bool?)false, GetNativeCheckedState(handler));
 				Assert.Equal(5, events);
-				Assert.Equal(5, commands);
+				Assert.Equal(4, commands);
 			});
 		}
 
@@ -173,17 +188,17 @@ namespace Microsoft.Maui.DeviceTests
 			SetupBuilder();
 			return InvokeOnMainThreadAsync(() =>
 			{
-				var checkBox = new CheckBox { IsThreeState = true, IsChecked = initial, IsEnabled = false };
+				var checkBox = new CheckBox { IsThreeState = true, CheckState = ToCheckState(initial), IsEnabled = false };
 				var events = 0;
 				var commands = 0;
-				checkBox.CheckedChanged += (_, _) => events++;
+				checkBox.CheckStateChanged += (_, _) => events++;
 				checkBox.Command = new Command(() => commands++);
 				var handler = CreateThreeStateHandler(checkBox);
 				Assert.Equal(initial, GetNativeCheckedState(handler));
 
 				ActivateNativeCheckBox(handler);
 
-				Assert.Equal(initial, checkBox.IsChecked);
+				Assert.Equal(initial, GetCheckedValue(checkBox));
 				Assert.Equal(initial, GetNativeCheckedState(handler));
 				Assert.Equal(0, events);
 				Assert.Equal(0, commands);
@@ -191,10 +206,10 @@ namespace Microsoft.Maui.DeviceTests
 				checkBox.IsEnabled = true;
 				ActivateNativeCheckBox(handler);
 
-				Assert.Equal(enabledResult, checkBox.IsChecked);
+				Assert.Equal(enabledResult, GetCheckedValue(checkBox));
 				Assert.Equal(enabledResult, GetNativeCheckedState(handler));
 				Assert.Equal(1, events);
-				Assert.Equal(1, commands);
+				Assert.Equal((initial == true) != (enabledResult == true) ? 1 : 0, commands);
 			});
 		}
 

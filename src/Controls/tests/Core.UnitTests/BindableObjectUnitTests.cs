@@ -615,6 +615,37 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 		}
 
 		[Fact]
+		public void NormalizedClearFallbackDoesNotPublishTransientChange()
+		{
+			var maximum = 10;
+			var property = BindableProperty.Create(nameof(MockBindable.TargetInt), typeof(int), typeof(MockBindable), 0,
+				coerceValue: (_, value) => Math.Min((int)value, maximum));
+			property.CoerceValueAfterPropertyChanging = true;
+			var mock = new MockBindable();
+			mock.SetValue(property, 5, new SetterSpecificity(SetterSpecificity.StyleImplicit, 0, 0, 0));
+			mock.SetValue(property, 0);
+			maximum = 0;
+			var changing = 0;
+			var changes = 0;
+			mock.PropertyChanging += (_, e) =>
+			{
+				if (e.PropertyName == property.PropertyName)
+					changing++;
+			};
+			mock.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == property.PropertyName)
+					changes++;
+			};
+
+			mock.ClearValue(property);
+
+			Assert.Equal(0, mock.GetValue(property));
+			Assert.Equal(0, changing);
+			Assert.Equal(0, changes);
+		}
+
+		[Fact]
 		public void InvalidValueNotApplied()
 		{
 			var property = BindableProperty.Create(nameof(MockBindable.Foo), typeof(string), typeof(MockBindable), null,

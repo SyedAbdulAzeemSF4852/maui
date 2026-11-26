@@ -24,6 +24,7 @@ namespace Microsoft.Maui.Handlers
 #endif
 			[nameof(ICheckBox2.IsThreeState)] = MapIsThreeState,
 			[nameof(ICheckBox.IsChecked)] = MapIsChecked,
+			[nameof(ICheckBox2.CheckState)] = MapCheckState,
 			[nameof(ICheckBox.Foreground)] = MapForeground,
 		};
 
@@ -54,13 +55,30 @@ namespace Microsoft.Maui.Handlers
 		{
 			if (checkBox is ICheckBox2 checkBox2)
 			{
-				checkBox2.IsChecked = value;
+				var state = value switch
+				{
+					true => CheckBoxState.Checked,
+					false => CheckBoxState.Unchecked,
+					null => CheckBoxState.Indeterminate
+				};
+				if (checkBox2.CheckState != state)
+					checkBox2.CheckState = state;
 			}
 			else if (value.HasValue)
 			{
 				checkBox.IsChecked = value.Value;
 			}
 		}
+
+		internal static CheckBoxState GetCheckState(ICheckBox checkBox) =>
+			checkBox is ICheckBox2 checkBox2 ? checkBox2.CheckState :
+				checkBox.IsChecked ? CheckBoxState.Checked : CheckBoxState.Unchecked;
+
+		/// <summary>Maps the complete checkbox state through the existing checked-state mapping.</summary>
+		/// <param name="handler">The associated handler.</param>
+		/// <param name="check">The associated checkbox.</param>
+		public static void MapCheckState(ICheckBoxHandler handler, ICheckBox check) =>
+			handler.UpdateValue(nameof(ICheckBox.IsChecked));
 
 #if MONOANDROID
 		/// <summary>

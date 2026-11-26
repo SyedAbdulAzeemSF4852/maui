@@ -11,7 +11,19 @@ namespace Microsoft.Maui.Controls
 	{
 		static CheckBox()
 		{
-			IsCheckedProperty.CoerceValueAfterPropertyChanging = true;
+			CheckStateProperty.CoerceValueAfterPropertyChanging = true;
+			IsCheckedProperty.ValueRequested = (bindable, value) => ((CheckBox)bindable).OnBooleanRequested((bool)value);
+			IsCheckedProperty.ValueStored = (bindable, oldValue, value) =>
+				((CheckBox)bindable).SynchronizeState(IsCheckedProperty, value);
+			CheckStateProperty.ValueStored = (bindable, oldValue, value) =>
+				((CheckBox)bindable).SynchronizeState(CheckStateProperty, value);
+			IsThreeStateProperty.ValueStored = (bindable, oldValue, value) =>
+			{
+				if (!Equals(oldValue, value))
+				{
+					((CheckBox)bindable).UpdateThreeState();
+				}
+			};
 			// Register dependency: Command depends on CommandParameter for CanExecute evaluation
 			// See https://github.com/dotnet/maui/issues/31939
 			CommandProperty.DependsOn(CommandParameterProperty);

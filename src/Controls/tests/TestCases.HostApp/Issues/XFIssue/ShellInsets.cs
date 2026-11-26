@@ -49,7 +49,7 @@ public class ShellInsets : TestShell
 			new Button()
 			{
 				Text = "Safe Area",
-				Command = new Command(() => SafeArea(cbox.IsChecked == true)),
+				Command = new Command(() => SafeArea(cbox.IsChecked)),
 				AutomationId = SafeAreaTest
 			}
 		};

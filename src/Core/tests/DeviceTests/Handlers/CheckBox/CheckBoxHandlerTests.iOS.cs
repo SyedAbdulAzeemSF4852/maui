@@ -34,13 +34,13 @@ namespace Microsoft.Maui.DeviceTests
 
 		sealed class ThreeStateCheckBoxStub : CheckBoxStub, ICheckBox2
 		{
-			public new bool? IsChecked { get; set; }
+			public CheckBoxState CheckState { get; set; }
 			public bool IsThreeState => true;
 
 			bool ICheckBox.IsChecked
 			{
-				get => IsChecked == true;
-				set => IsChecked = value;
+				get => CheckState == CheckBoxState.Checked;
+				set => CheckState = value ? CheckBoxState.Checked : CheckBoxState.Unchecked;
 			}
 		}
 
@@ -49,7 +49,7 @@ namespace Microsoft.Maui.DeviceTests
 		{
 			return InvokeOnMainThreadAsync(() =>
 			{
-				var checkBoxStub = new ThreeStateCheckBoxStub { IsChecked = null };
+				var checkBoxStub = new ThreeStateCheckBoxStub { CheckState = CheckBoxState.Indeterminate };
 				var handler = CreateHandler(checkBoxStub);
 				var native = GetNativeCheckBox(handler);
 				var mixedValue = NSBundle.FromIdentifier("com.apple.UIKit")?.GetLocalizedString("Mixed") ?? "Mixed";
@@ -60,8 +60,8 @@ namespace Microsoft.Maui.DeviceTests
 
 				foreach (bool? state in new bool?[] { true, false, null })
 				{
-					((ICheckBox2)checkBoxStub).IsChecked = state;
-					handler.UpdateValue(nameof(ICheckBox.IsChecked));
+					checkBoxStub.CheckState = StateFromNullable(state);
+					handler.UpdateValue(nameof(ICheckBox2.CheckState));
 
 					Assert.Equal(state is null ? mixedValue : state == true ? "1" : "0", native.AccessibilityValue);
 				}
@@ -75,7 +75,7 @@ namespace Microsoft.Maui.DeviceTests
 		{
 			return InvokeOnMainThreadAsync(() =>
 			{
-				var checkBoxStub = new ThreeStateCheckBoxStub { IsChecked = null, IsEnabled = isEnabled };
+				var checkBoxStub = new ThreeStateCheckBoxStub { CheckState = CheckBoxState.Indeterminate, IsEnabled = isEnabled };
 				var handler = CreateHandler(checkBoxStub);
 				var native = GetNativeCheckBox(handler);
 				var defaultTint = native.TintColor;
@@ -83,8 +83,8 @@ namespace Microsoft.Maui.DeviceTests
 
 				UIImage GetImage(bool? state)
 				{
-					checkBoxStub.IsChecked = state;
-					handler.UpdateValue(nameof(ICheckBox.IsChecked));
+					checkBoxStub.CheckState = StateFromNullable(state);
+					handler.UpdateValue(nameof(ICheckBox2.CheckState));
 					var image = native.ImageForState(UIControlState.Normal);
 					Assert.NotNull(image);
 					return image;
@@ -169,11 +169,18 @@ namespace Microsoft.Maui.DeviceTests
 		MauiCheckBox GetNativeCheckBox(CheckBoxHandler checkBoxHandler) =>
 			(MauiCheckBox)checkBoxHandler.PlatformView;
 
+		static CheckBoxState StateFromNullable(bool? state) => state switch
+		{
+			true => CheckBoxState.Checked,
+			false => CheckBoxState.Unchecked,
+			null => CheckBoxState.Indeterminate
+		};
+
 		bool GetNativeIsChecked(CheckBoxHandler checkBoxHandler)
 		{
-			var value = GetNativeCheckBox(checkBoxHandler).IsChecked;
-			Assert.True(value.HasValue);
-			return value.Value;
+			var native = GetNativeCheckBox(checkBoxHandler);
+			Assert.NotEqual(CheckBoxState.Indeterminate, native.CheckState);
+			return native.IsChecked;
 		}
 
 		async Task ValidateColor(ICheckBox checkBoxStub, Color color, Action action = null)

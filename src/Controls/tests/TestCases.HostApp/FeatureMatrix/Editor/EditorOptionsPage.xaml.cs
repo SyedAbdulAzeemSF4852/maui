@@ -261,10 +261,10 @@ public partial class EditorOptionsPage : ContentPage
 	{
 		var attributes = FontAttributes.None;
 
-		if (FontAttributesBoldCheckBox.IsChecked == true)
+		if (FontAttributesBoldCheckBox.IsChecked)
 			attributes |= FontAttributes.Bold;
 
-		if (FontAttributesItalicCheckBox.IsChecked == true)
+		if (FontAttributesItalicCheckBox.IsChecked)
 			attributes |= FontAttributes.Italic;
 
 		_viewModel.FontAttributes = attributes;

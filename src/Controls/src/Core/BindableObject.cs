@@ -42,6 +42,7 @@ namespace Microsoft.Maui.Controls
 		internal Dictionary<TriggerBase, SetterSpecificity> _triggerSpecificity;
 		readonly Dictionary<int, BindablePropertyContext> _properties = new(4);
 		bool _applying;
+		BindableProperty _relatedPropertyBinding;
 		WeakReference _inheritedContext;
 
 		/// <summary>Bindable property for <see cref="BindingContext"/>.</summary>
@@ -136,6 +137,8 @@ namespace Microsoft.Maui.Controls
 			}
 
 			var newValue = bpcontext.Values.GetClearedValue(specificity);
+			if (property.CoerceValueAfterPropertyChanging && property.CoerceValue is { } coerceFallback)
+				newValue = coerceFallback(this, newValue);
 			var changed = !Equals(original.Value, newValue);
 			if (changed)
 			{
@@ -157,6 +160,13 @@ namespace Microsoft.Maui.Controls
 			else if (property.CoerceValue != null)
 				property.CoerceValue(this, newValue);
 
+			property.ValueRequested?.Invoke(this, newValue);
+			property.ValueStored?.Invoke(this, original.Value, newValue);
+			if (property.ValueStored != null)
+			{
+				newValue = bpcontext.Values.GetValue();
+				changed = !Equals(original.Value, newValue);
+			}
 			OnBindablePropertySet(property, original.Value, newValue, changed, changed);
 		}
 
@@ -682,6 +692,15 @@ namespace Microsoft.Maui.Controls
 				return;
 			}
 
+			if (property == _relatedPropertyBinding && specificity.IsBinding && Equals(GetValue(property), value))
+			{
+				// Keep the binding fallback current without interpreting its echoed projection as a new request.
+				GetOrCreateContext(property).Values.SetValue(specificity, value);
+				return;
+			}
+
+			property.ValueRequested?.Invoke(this, value);
+
 			if (property.CoerceValue != null)
 				value = property.CoerceValue(this, value);
 
@@ -774,6 +793,13 @@ namespace Microsoft.Maui.Controls
 
 			context.Attributes &= ~BindableContextAttributes.IsDefaultValueCreated;
 
+			property.ValueStored?.Invoke(this, original, value);
+			if (property.ValueStored != null)
+			{
+				value = context.Values.GetValue();
+				sameValue = Equals(value, original);
+			}
+
 			if ((context.Attributes & BindableContextAttributes.IsDynamicResource) != 0
 				&& clearDynamicResources
 				&& (specificity == SetterSpecificity.ManualValueSetter
@@ -802,6 +828,45 @@ namespace Microsoft.Maui.Controls
 		private protected virtual void OnBindablePropertySet(BindableProperty property, object original, object value, bool didChange, bool willFirePropertyChanged)
 		{
 			if (willFirePropertyChanged)
+			{
+				NotifyPropertyChanged(property);
+				property.PropertyChanged?.Invoke(this, original, value);
+			}
+		}
+
+		// The originating property has already raised changing notifications. Store its
+		// projection before either property's binding or changed notifications can observe it.
+		internal void SetValueFromRelatedProperty(BindableProperty property, object value, SetterSpecificity specificity)
+		{
+			var context = GetOrCreateContext(property);
+			var original = context.Values.GetValue();
+			if (Equals(original, value))
+				return;
+
+			var currentSpecificity = context.Values.GetSpecificity();
+			if (specificity < currentSpecificity)
+				specificity = currentSpecificity;
+			context.Values.SetValue(specificity, value);
+			context.Attributes &= ~BindableContextAttributes.IsDefaultValueCreated;
+
+			var binding = context.Bindings.GetValue();
+			if (binding != null && !_applying)
+			{
+				var previousRelatedPropertyBinding = _relatedPropertyBinding;
+				_relatedPropertyBinding = property;
+				_applying = true;
+				try
+				{
+					binding.Apply(true);
+				}
+				finally
+				{
+					_applying = false;
+					_relatedPropertyBinding = previousRelatedPropertyBinding;
+				}
+			}
+
+			if (Equals(context.Values.GetValue(), value))
 			{
 				NotifyPropertyChanged(property);
 				property.PropertyChanged?.Invoke(this, original, value);

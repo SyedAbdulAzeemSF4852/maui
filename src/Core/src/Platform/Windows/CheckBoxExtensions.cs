@@ -8,7 +8,12 @@ namespace Microsoft.Maui.Platform
 	{
 		public static void UpdateIsChecked(this CheckBox platformCheckBox, ICheckBox check)
 		{
-			platformCheckBox.IsChecked = check is ICheckBox2 checkBox2 ? checkBox2.IsChecked : check.IsChecked;
+			platformCheckBox.IsChecked = Handlers.CheckBoxHandler.GetCheckState(check) switch
+			{
+				CheckBoxState.Checked => true,
+				CheckBoxState.Indeterminate => null,
+				_ => false
+			};
 		}
 
 		public static void UpdateForeground(this CheckBox platformCheckBox, ICheckBox check)

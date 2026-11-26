@@ -11,14 +11,17 @@ namespace Microsoft.Maui.Controls
 	/// Represents a control that a user can select or clear.
 	/// </summary>
 	/// <remarks>
-	/// A <see cref="CheckBox"/> can be checked, unchecked, or indeterminate.
-	/// Application code and user interaction can set indeterminate when <see cref="IsThreeState"/> is true.
-	/// Use the <see cref="IsChecked"/> property to determine or set the state.
+	/// Use <see cref="IsChecked"/> for Boolean selection and <see cref="CheckState"/> for the
+	/// complete state, including indeterminate when <see cref="IsThreeState"/> is true.
 	/// </remarks>
 	[DebuggerDisplay("{GetDebuggerDisplay(), nq}")]
 	public partial class CheckBox : View, IElementConfiguration<CheckBox>, IBorderElement, IColorElement, ICheckBox2, ICommandElement
 	{
 		readonly Lazy<PlatformConfigurationRegistry<CheckBox>> _platformConfigurationRegistry;
+		CheckBoxState _committedState;
+		bool _reportedIsChecked;
+		bool _notifyingProjection;
+		int _commitVersion;
 		
 		/// <summary>
 		/// The visual state name for the checked state of the <see cref="CheckBox"/>.
@@ -34,64 +37,35 @@ namespace Microsoft.Maui.Controls
 
 		/// <summary>Bindable property for <see cref="IsChecked"/>. This is a bindable property.</summary>
 		public static readonly BindableProperty IsCheckedProperty =
-			BindableProperty.Create(nameof(IsChecked), typeof(bool?), typeof(CheckBox), BooleanBoxes.FalseBox,
-				propertyChanged: (bindable, oldValue, newValue) =>
+			BindableProperty.Create(nameof(IsChecked), typeof(bool), typeof(CheckBox), BooleanBoxes.FalseBox,
+				defaultBindingMode: BindingMode.TwoWay,
+				propertyChanging: (bindable, oldValue, value) =>
 				{
-					if (bindable is not CheckBox checkBox)
-					{
-						return;
-					}
+					var checkBox = (CheckBox)bindable;
+					if (checkBox.CheckState != ((bool)value ? CheckBoxState.Checked : CheckBoxState.Unchecked))
+						checkBox.OnPropertyChanging(nameof(CheckState));
+				});
 
-					checkBox.Handler?.UpdateValue(nameof(ICheckBox.Foreground));
-					checkBox.CheckedChanged?.Invoke(bindable, new CheckedChangedEventArgs((bool?)newValue));
-					if (checkBox.Command?.CanExecute(checkBox.CommandParameter) == true)
-					{
-						checkBox.Command.Execute(checkBox.CommandParameter);
-					}
-
-					checkBox.ChangeVisualState();
-				}, defaultBindingMode: BindingMode.TwoWay,
+		/// <summary>Bindable property for <see cref="CheckState"/>.</summary>
+		public static readonly BindableProperty CheckStateProperty =
+			BindableProperty.Create(nameof(CheckState), typeof(CheckBoxState), typeof(CheckBox), CheckBoxState.Unchecked,
+				defaultBindingMode: BindingMode.TwoWay,
+				validateValue: (bindable, value) => (CheckBoxState)value is
+					CheckBoxState.Unchecked or CheckBoxState.Checked or CheckBoxState.Indeterminate,
 				coerceValue: (bindable, value) =>
-					!((CheckBox)bindable).IsThreeState && value is null ? BooleanBoxes.FalseBox : value);
+					!((CheckBox)bindable).IsThreeState && (CheckBoxState)value == CheckBoxState.Indeterminate
+						? CheckBoxState.Unchecked : value,
+				propertyChanging: (bindable, oldValue, value) =>
+				{
+					var checkBox = (CheckBox)bindable;
+					if (checkBox.IsChecked != ((CheckBoxState)value == CheckBoxState.Checked))
+						checkBox.OnPropertyChanging(nameof(IsChecked));
+				});
 
 		/// <summary>Bindable property for <see cref="IsThreeState"/>.</summary>
 		public static readonly BindableProperty IsThreeStateProperty =
 			BindableProperty.Create(nameof(IsThreeState), typeof(bool), typeof(CheckBox), BooleanBoxes.FalseBox,
-				propertyChanged: (bindable, oldValue, newValue) =>
-				{
-					var checkBox = (CheckBox)bindable;
-					if (!(bool)newValue && checkBox.GetContext(IsCheckedProperty) is { } context)
-					{
-						// Normalize queued values when disabling, preserving their order and specificity.
-						if (context.DelayedSetters is { } delayedSetters)
-						{
-							var count = delayedSetters.Count;
-							for (var i = 0; i < count; i++)
-							{
-								var setter = delayedSetters.Dequeue();
-								delayedSetters.Enqueue(setter.Value is null
-									? new SetValueArgs(setter.Property, setter.Context, BooleanBoxes.FalseBox,
-										setter.CurrentlyApplying, setter.Attributes, setter.Specificity)
-									: setter);
-							}
-						}
-
-						// Clear hidden mixed values too, so clearing a higher-priority setter cannot restore null.
-						for (var i = 0; i < context.Values.Count - 1; i++)
-						{
-							if (context.Values.GetValueAt(i) is null)
-							{
-								context.Values[context.Values.GetSpecificityAt(i)] = BooleanBoxes.FalseBox;
-							}
-						}
-
-						if (checkBox.IsChecked is null)
-						{
-							checkBox.SetValueCore(IsCheckedProperty, BooleanBoxes.FalseBox, SetValueFlags.None,
-								SetValuePrivateFlags.Default, context.Values.GetSpecificity());
-						}
-					}
-				}, defaultBindingMode: BindingMode.TwoWay);
+				defaultBindingMode: BindingMode.TwoWay);
 
 		/// <summary>Bindable property for the <see cref="Command"/> property.</summary>
 		public static readonly BindableProperty CommandProperty = BindableProperty.Create(nameof(Command), typeof(ICommand), typeof(CheckBox), null, propertyChanging: CommandElement.OnCommandChanging, propertyChanged: CommandElement.OnCommandChanged);
@@ -100,8 +74,13 @@ namespace Microsoft.Maui.Controls
 		public static readonly BindableProperty CommandParameterProperty = BindableProperty.Create(nameof(CommandParameter), typeof(object), typeof(CheckBox), null, propertyChanged: CommandElement.OnCommandParameterChanged);
 
 		/// <summary>
-		/// Gets or sets the command executed whenever the checked state changes, including indeterminate. This is a bindable property.
+		/// Gets or sets the command executed when the Boolean <see cref="IsChecked"/> value changes.
+		/// This is a bindable property.
 		/// </summary>
+		/// <remarks>
+		/// Transitions between unchecked and indeterminate do not execute the command.
+		/// Use <see cref="CheckStateChanged"/> to observe every complete state change.
+		/// </remarks>
 		public ICommand Command
 		{
 			get => (ICommand)GetValue(CommandProperty);
@@ -140,12 +119,25 @@ namespace Microsoft.Maui.Controls
 		/// Gets or sets a value indicating whether the <see cref="CheckBox"/> is checked.
 		/// This is a bindable property.
 		/// </summary>
-		/// <value>True if checked, false if unchecked, or null if indeterminate. The default is false.</value>
-		/// <remarks>When <see cref="IsThreeState"/> is false, assigning null sets the value to false.</remarks>
-		public bool? IsChecked
+		/// <value>True only when <see cref="CheckState"/> is <see cref="CheckBoxState.Checked"/>. The default is false.</value>
+		/// <remarks>Setting false clears indeterminate, even when this property already returns false.</remarks>
+		public bool IsChecked
 		{
-			get => (bool?)GetValue(IsCheckedProperty);
+			get => (bool)GetValue(IsCheckedProperty);
 			set => SetValue(IsCheckedProperty, BooleanBoxes.Box(value));
+		}
+
+		/// <summary>Gets or sets the complete checkbox state. This is a bindable property.</summary>
+		/// <remarks>
+		/// Indeterminate is normalized to unchecked while <see cref="IsThreeState"/> is false.
+		/// The normalized request is not remembered or restored when three-state support is enabled later.
+		/// Enable <see cref="IsThreeState"/> before assigning indeterminate.
+		/// Bind this property, rather than both state properties, when a view model needs a single source of truth.
+		/// </remarks>
+		public CheckBoxState CheckState
+		{
+			get => (CheckBoxState)GetValue(CheckStateProperty);
+			set => SetValue(CheckStateProperty, value);
 		}
 
 		/// <summary>
@@ -155,7 +147,7 @@ namespace Microsoft.Maui.Controls
 		/// <remarks>
 		/// The default is false. When true, user interaction cycles from unchecked to checked
 		/// to indeterminate, then back to unchecked. Otherwise, user interaction remains binary.
-		/// Disabling three-state support resets an indeterminate <see cref="IsChecked"/> value to false.
+		/// Disabling three-state support resets an indeterminate <see cref="CheckState"/> to unchecked.
 		/// </remarks>
 		public bool IsThreeState
 		{
@@ -163,11 +155,113 @@ namespace Microsoft.Maui.Controls
 			set => SetValue(IsThreeStateProperty, BooleanBoxes.Box(value));
 		}
 
+		void OnBooleanRequested(bool value)
+		{
+			if (!_notifyingProjection && value == IsChecked &&
+				CheckState != (value ? CheckBoxState.Checked : CheckBoxState.Unchecked))
+			{
+				_notifyingProjection = true;
+				try
+				{
+					OnPropertyChanging(nameof(CheckState));
+				}
+				finally
+				{
+					_notifyingProjection = false;
+				}
+			}
+		}
+
+		void SynchronizeState(BindableProperty source, object value)
+		{
+			var specificity = GetContext(source)?.Values.GetSpecificity() ?? SetterSpecificity.DefaultValue;
+			if (source == IsCheckedProperty)
+			{
+				SetValueFromRelatedProperty(CheckStateProperty,
+					(bool)value ? CheckBoxState.Checked : CheckBoxState.Unchecked, specificity);
+			}
+			else
+			{
+				SetValueFromRelatedProperty(IsCheckedProperty,
+					BooleanBoxes.Box((CheckBoxState)value == CheckBoxState.Checked), specificity);
+			}
+		}
+
+		void UpdateThreeState()
+		{
+			if (IsThreeState || GetContext(CheckStateProperty) is not { } context)
+				return;
+
+			if (context.DelayedSetters is { } delayedSetters)
+			{
+				var count = delayedSetters.Count;
+				for (var i = 0; i < count; i++)
+				{
+					var setter = delayedSetters.Dequeue();
+					delayedSetters.Enqueue((CheckBoxState)setter.Value == CheckBoxState.Indeterminate
+						? new SetValueArgs(setter.Property, setter.Context, CheckBoxState.Unchecked,
+							setter.CurrentlyApplying, setter.Attributes, setter.Specificity)
+						: setter);
+				}
+			}
+
+			for (var i = 0; i < context.Values.Count - 1; i++)
+			{
+				if ((CheckBoxState)context.Values.GetValueAt(i) == CheckBoxState.Indeterminate)
+					context.Values[context.Values.GetSpecificityAt(i)] = CheckBoxState.Unchecked;
+			}
+
+			if (CheckState == CheckBoxState.Indeterminate)
+				SetValue(CheckStateProperty, CheckBoxState.Unchecked, EffectiveStateSpecificity());
+		}
+
+		SetterSpecificity EffectiveStateSpecificity()
+		{
+			var specificity = GetContext(CheckStateProperty)?.Values.GetSpecificity() ?? SetterSpecificity.DefaultValue;
+			return specificity == SetterSpecificity.DefaultValue ? SetterSpecificity.ManualValueSetter : specificity;
+		}
+
+		private protected override void OnBindablePropertySet(BindableProperty property, object original, object value, bool changed, bool willFirePropertyChanged)
+		{
+			base.OnBindablePropertySet(property, original, value, changed, willFirePropertyChanged);
+			if (property == IsCheckedProperty || property == CheckStateProperty || property == IsThreeStateProperty)
+				CommitState();
+		}
+
+		void CommitState()
+		{
+			var state = CheckState;
+			if (state == _committedState)
+				return;
+
+			_committedState = state;
+			var version = ++_commitVersion;
+			var isChecked = state == CheckBoxState.Checked;
+			Handler?.UpdateValue(nameof(ICheckBox.Foreground));
+			CheckStateChanged?.Invoke(this, new CheckStateChangedEventArgs(state));
+			if (version != _commitVersion)
+				return;
+
+			if (isChecked != _reportedIsChecked)
+			{
+				_reportedIsChecked = isChecked;
+				CheckedChanged?.Invoke(this, new CheckedChangedEventArgs(isChecked));
+				if (version != _commitVersion)
+					return;
+
+				if (Command?.CanExecute(CommandParameter) == true)
+					Command.Execute(CommandParameter);
+			}
+
+			if (version == _commitVersion)
+				ChangeVisualState();
+		}
+
 		protected internal override void ChangeVisualState()
 		{
-			if (IsEnabled && IsChecked != false)
+			if (IsEnabled && CheckState != CheckBoxState.Unchecked)
 			{
-				string stateName = IsChecked == true ? IsCheckedVisualState : IsIndeterminateVisualState;
+				string stateName = IsChecked ? IsCheckedVisualState : IsIndeterminateVisualState;
 				bool isStateAvailable = false;
 				var visualStates = VisualStateManager.GetVisualStateGroups(this);
 				foreach (var group in visualStates)
@@ -207,6 +301,10 @@ namespace Microsoft.Maui.Controls
 		/// </summary>
 		public event EventHandler<CheckedChangedEventArgs> CheckedChanged;
 
+		/// <summary>Occurs for each complete state change, after both state properties are updated.</summary>
+		/// <remarks>Raised before <see cref="CheckedChanged"/>, which only reports Boolean changes.</remarks>
+		public event EventHandler<CheckStateChangedEventArgs> CheckStateChanged;
+
 		/// <inheritdoc/>
 		public IPlatformElementConfiguration<T, CheckBox> On<T>() where T : IConfigPlatform
 		{
@@ -237,14 +335,14 @@ namespace Microsoft.Maui.Controls
 
 		bool ICheckBox.IsChecked
 		{
-			get => IsChecked == true;
+			get => IsChecked;
 			set => SetValue(IsCheckedProperty, BooleanBoxes.Box(value), SetterSpecificity.FromHandler);
 		}
 
-		bool? ICheckBox2.IsChecked
+		CheckBoxState ICheckBox2.CheckState
 		{
-			get => IsChecked;
-			set => SetValue(IsCheckedProperty, BooleanBoxes.Box(value), SetterSpecificity.FromHandler);
+			get => CheckState;
+			set => SetValue(CheckStateProperty, value, SetterSpecificity.FromHandler);
 		}
 
 		bool ICheckBox2.IsThreeState => IsThreeState;
@@ -257,14 +355,14 @@ namespace Microsoft.Maui.Controls
 
 		private protected override string GetDebuggerDisplay()
 		{
-			return $"{base.GetDebuggerDisplay()}, IsChecked = {IsChecked?.ToString() ?? "Indeterminate"}";
+			return $"{base.GetDebuggerDisplay()}, CheckState = {CheckState}";
 		}
 
 		internal override bool TrySetValue(string text)
 		{
 			if (string.Equals(text, "Indeterminate", StringComparison.OrdinalIgnoreCase))
 			{
-				IsChecked = null;
+				CheckState = CheckBoxState.Indeterminate;
 				return true;
 			}
 
