@@ -42,7 +42,6 @@ namespace Microsoft.Maui.Controls
 		internal Dictionary<TriggerBase, SetterSpecificity> _triggerSpecificity;
 		readonly Dictionary<int, BindablePropertyContext> _properties = new(4);
 		bool _applying;
-		BindableProperty _relatedPropertyBinding;
 		WeakReference _inheritedContext;
 
 		/// <summary>Bindable property for <see cref="BindingContext"/>.</summary>
@@ -125,7 +124,18 @@ namespace Microsoft.Maui.Controls
 
 		void ClearValueCore(BindableProperty property, SetterSpecificity specificity)
 		{
+			if (this is CheckBox checkBox && CheckBox.IsStateProperty(property))
+			{
+				checkBox.ClearStateValue(property, specificity);
+			}
+			else
+			{
+				ClearValueCoreActual(property, specificity);
+			}
+		}
 
+		internal void ClearValueCoreActual(BindableProperty property, SetterSpecificity specificity)
+		{
 			BindablePropertyContext bpcontext = GetContext(property);
 			if (bpcontext == null)
 				return;
@@ -675,6 +685,18 @@ namespace Microsoft.Maui.Controls
 
 		internal void SetValueCore(BindableProperty property, object value, SetValueFlags attributes, SetValuePrivateFlags privateAttributes, SetterSpecificity specificity)
 		{
+			if (this is CheckBox checkBox && CheckBox.IsStateProperty(property))
+			{
+				checkBox.SetStateValue(property, value, attributes, privateAttributes, specificity);
+			}
+			else
+			{
+				SetValueCoreActual(property, value, attributes, privateAttributes, specificity);
+			}
+		}
+
+		internal void SetValueCoreActual(BindableProperty property, object value, SetValueFlags attributes, SetValuePrivateFlags privateAttributes, SetterSpecificity specificity)
+		{
 			if (property == null)
 				throw new ArgumentNullException(nameof(property));
 
@@ -692,13 +714,6 @@ namespace Microsoft.Maui.Controls
 				return;
 			}
 
-			if (property == _relatedPropertyBinding && specificity.IsBinding && Equals(GetValue(property), value))
-			{
-				// Keep the binding fallback current without interpreting its echoed projection as a new request.
-				GetOrCreateContext(property).Values.SetValue(specificity, value);
-				return;
-			}
-
 			property.ValueRequested?.Invoke(this, value);
 
 			if (property.CoerceValue != null)
@@ -707,6 +722,10 @@ namespace Microsoft.Maui.Controls
 			BindablePropertyContext context = GetOrCreateContext(property);
 
 			bool currentlyApplying = _applying;
+			if (this is CheckBox stateCheckBox && CheckBox.IsStateProperty(property))
+			{
+				currentlyApplying |= stateCheckBox.SuppressStateBindingWriteBack;
+			}
 
 			if ((context.Attributes & BindableContextAttributes.IsBeingSet) != 0)
 			{
@@ -744,6 +763,14 @@ namespace Microsoft.Maui.Controls
 			var specificityAndValue = context.Values.GetSpecificityAndValue();
 			var original = specificityAndValue.Value;
 			var originalSpecificity = specificityAndValue.Key;
+			if (this is CheckBox stateCheckBox && CheckBox.IsStateProperty(property))
+			{
+				if (!stateCheckBox.PrepareStateValue(context, value, specificity))
+				{
+					return;
+				}
+				originalSpecificity = context.Values.GetSpecificity();
+			}
 
 			//if the last value was set from handler, override it
 			if (specificity != SetterSpecificity.FromHandler
@@ -799,6 +826,10 @@ namespace Microsoft.Maui.Controls
 				value = context.Values.GetValue();
 				sameValue = Equals(value, original);
 			}
+			if (this is CheckBox suppressionCheckBox && CheckBox.IsStateProperty(property))
+			{
+				currentlyApplying |= suppressionCheckBox.SuppressStateBindingWriteBack;
+			}
 
 			if ((context.Attributes & BindableContextAttributes.IsDynamicResource) != 0
 				&& clearDynamicResources
@@ -812,9 +843,16 @@ namespace Microsoft.Maui.Controls
 			{
 				if (binding != null && !currentlyApplying)
 				{
-					_applying = true;
-					binding.Apply(true);
-					_applying = false;
+					if (this is CheckBox stateBindingCheckBox && CheckBox.IsStateProperty(property))
+					{
+						stateBindingCheckBox.ApplyStateBinding(property, binding);
+					}
+					else
+					{
+						_applying = true;
+						binding.Apply(true);
+						_applying = false;
+					}
 				}
 
 				OnBindablePropertySet(property, original, value, !sameValue, true);
@@ -834,44 +872,7 @@ namespace Microsoft.Maui.Controls
 			}
 		}
 
-		// The originating property has already raised changing notifications. Store its
-		// projection before either property's binding or changed notifications can observe it.
-		internal void SetValueFromRelatedProperty(BindableProperty property, object value, SetterSpecificity specificity)
-		{
-			var context = GetOrCreateContext(property);
-			var original = context.Values.GetValue();
-			if (Equals(original, value))
-				return;
-
-			var currentSpecificity = context.Values.GetSpecificity();
-			if (specificity < currentSpecificity)
-				specificity = currentSpecificity;
-			context.Values.SetValue(specificity, value);
-			context.Attributes &= ~BindableContextAttributes.IsDefaultValueCreated;
-
-			var binding = context.Bindings.GetValue();
-			if (binding != null && !_applying)
-			{
-				var previousRelatedPropertyBinding = _relatedPropertyBinding;
-				_relatedPropertyBinding = property;
-				_applying = true;
-				try
-				{
-					binding.Apply(true);
-				}
-				finally
-				{
-					_applying = false;
-					_relatedPropertyBinding = previousRelatedPropertyBinding;
-				}
-			}
-
-			if (Equals(context.Values.GetValue(), value))
-			{
-				NotifyPropertyChanged(property);
-				property.PropertyChanged?.Invoke(this, original, value);
-			}
-		}
+		internal bool IsApplyingBindings => _applying;
 
 		void ApplyBindings(bool fromBindingContextChanged)
 		{
@@ -948,7 +949,7 @@ namespace Microsoft.Maui.Controls
 		internal BindablePropertyContext GetContext(BindableProperty property) => _properties.TryGetValue(property.InternalId, out var result) ? result : null;
 
 		[MethodImpl(MethodImplOptions.AggressiveInlining)]
-		BindablePropertyContext GetOrCreateContext(BindableProperty property)
+		internal BindablePropertyContext GetOrCreateContext(BindableProperty property)
 		{
 			if (_properties.TryGetValue(property.InternalId, out var context))
 				return context;
@@ -1066,6 +1067,7 @@ namespace Microsoft.Maui.Controls
 			Silent = 1 << 1,
 			FromStyle = 1 << 3,
 			Converted = 1 << 4,
+			FromBinding = 1 << 5,
 			Default = None
 		}
 

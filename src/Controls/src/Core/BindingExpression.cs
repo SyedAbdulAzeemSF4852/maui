@@ -180,7 +180,9 @@ namespace Microsoft.Maui.Controls
 					return;
 				}
 
-				target.SetValueCore(property, value, SetValueFlags.ClearDynamicResource, BindableObject.SetValuePrivateFlags.Default | BindableObject.SetValuePrivateFlags.Converted, specificity);
+				target.SetValueCore(property, value, SetValueFlags.ClearDynamicResource,
+					BindableObject.SetValuePrivateFlags.Converted |
+					(target is CheckBox && CheckBox.IsStateProperty(property) ? BindableObject.SetValuePrivateFlags.FromBinding : BindableObject.SetValuePrivateFlags.None), specificity);
 			}
 			else if (needsSetter && part.LastSetter != null && current != null)
 			{

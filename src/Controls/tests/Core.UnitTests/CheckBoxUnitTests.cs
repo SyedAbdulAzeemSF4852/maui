@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Microsoft.Maui.Controls.Internals;
 using NSubstitute;
 using Xunit;
 using static Microsoft.Maui.Controls.Core.UnitTests.VisualStateTestHelpers;
@@ -128,6 +129,10 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			source.IsThreeState = true;
 			Assert.True(target.IsThreeState);
 			Assert.Equal(CheckBoxState.Unchecked, target.CheckState);
+			target.CheckState = CheckBoxState.Indeterminate;
+			source.IsThreeState = false;
+			Assert.False(target.IsThreeState);
+			Assert.Equal(CheckBoxState.Unchecked, target.CheckState);
 		}
 
 		[Fact]
@@ -144,6 +149,41 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.True(target.IsChecked);
 			source.CheckState = CheckBoxState.Unchecked;
 			Assert.False(target.IsChecked);
+		}
+
+		[Fact]
+		public void DisablingThreeStateResetsMixedOnceWithoutReplacingStateBinding()
+		{
+			var source = new CheckBox { IsThreeState = true };
+			var target = new CheckBox { IsThreeState = true };
+			target.SetBinding(CheckBox.CheckStateProperty,
+				static (CheckBox value) => value.CheckState, source: source);
+			((ICheckBox2)target).CheckState = CheckBoxState.Indeterminate;
+			Assert.Equal(CheckBoxState.Indeterminate, source.CheckState);
+			var states = new List<CheckBoxState>();
+			var checkedEvents = 0;
+			var commands = 0;
+			target.CheckStateChanged += (_, e) => states.Add(e.Value);
+			target.CheckedChanged += (_, _) => checkedEvents++;
+			target.Command = new Command(() => commands++);
+
+			target.IsThreeState = false;
+			target.IsThreeState = false;
+			target.IsThreeState = true;
+
+			Assert.Equal(CheckBoxState.Unchecked, target.CheckState);
+			Assert.Equal(CheckBoxState.Unchecked, source.CheckState);
+			Assert.Equal(new[] { CheckBoxState.Unchecked }, states);
+			Assert.Equal(0, checkedEvents);
+			Assert.Equal(0, commands);
+
+			source.CheckState = CheckBoxState.Checked;
+			Assert.Equal(CheckBoxState.Checked, target.CheckState);
+			((ICheckBox2)target).CheckState = CheckBoxState.Indeterminate;
+			Assert.Equal(CheckBoxState.Indeterminate, source.CheckState);
+			Assert.Equal(new[] { CheckBoxState.Unchecked, CheckBoxState.Checked, CheckBoxState.Indeterminate }, states);
+			Assert.Equal(2, checkedEvents);
+			Assert.Equal(2, commands);
 		}
 
 		[Theory]
@@ -183,10 +223,18 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			var model = new StateObserver(checkBox);
 			if (typedBinding)
 			{
-				checkBox.SetBinding(CheckBox.CheckStateProperty, static (StateObserver value) => value.State,
-					source: model, mode: BindingMode.TwoWay);
-				checkBox.SetBinding(CheckBox.IsCheckedProperty, static (StateObserver value) => value.IsChecked,
-					source: model, mode: BindingMode.TwoWay);
+				checkBox.SetBinding(CheckBox.CheckStateProperty,
+					new TypedBinding<StateObserver, CheckBoxState>(
+						static observer => (observer.State, true),
+						static (observer, value) => observer.State = value,
+						new[] { new Tuple<Func<StateObserver, object>, string>(static observer => observer, nameof(StateObserver.State)) })
+					{ Source = model, Mode = BindingMode.TwoWay });
+				checkBox.SetBinding(CheckBox.IsCheckedProperty,
+					new TypedBinding<StateObserver, bool>(
+						static observer => (observer.IsChecked, true),
+						static (observer, value) => observer.IsChecked = value,
+						new[] { new Tuple<Func<StateObserver, object>, string>(static observer => observer, nameof(StateObserver.IsChecked)) })
+					{ Source = model, Mode = BindingMode.TwoWay });
 			}
 			else
 			{
@@ -303,6 +351,350 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 				}
 			}
 			public bool IsChecked => State == CheckBoxState.Checked;
+		}
+
+		[Theory]
+		[InlineData(false, false, BindingMode.OneWay)]
+		[InlineData(false, true, BindingMode.OneWay)]
+		[InlineData(true, false, BindingMode.OneWay)]
+		[InlineData(true, true, BindingMode.OneWay)]
+		[InlineData(false, false, BindingMode.TwoWay)]
+		[InlineData(false, true, BindingMode.TwoWay)]
+		[InlineData(true, false, BindingMode.TwoWay)]
+		[InlineData(true, true, BindingMode.TwoWay)]
+		public void StateBindingBeforeFlagBindingPreservesModel(bool typedBinding, bool deferredContext, BindingMode stateBindingMode)
+		{
+			var model = new CheckBox { IsThreeState = true, CheckState = CheckBoxState.Indeterminate };
+			var checkBox = new CheckBox { IsChecked = true };
+			var writes = new List<CheckBoxState>();
+			model.CheckStateChanged += (_, e) => writes.Add(e.Value);
+
+			if (!deferredContext)
+			{
+				checkBox.BindingContext = model;
+			}
+			if (typedBinding)
+			{
+				checkBox.SetBinding(CheckBox.CheckStateProperty, static (CheckBox value) => value.CheckState,
+					mode: stateBindingMode);
+				checkBox.SetBinding(CheckBox.IsThreeStateProperty, static (CheckBox value) => value.IsThreeState,
+					mode: BindingMode.TwoWay);
+			}
+			else
+			{
+				checkBox.SetBinding(CheckBox.CheckStateProperty, new Binding(nameof(CheckBox.CheckState), stateBindingMode));
+				checkBox.SetBinding(CheckBox.IsThreeStateProperty, new Binding(nameof(CheckBox.IsThreeState), BindingMode.TwoWay));
+			}
+			if (deferredContext)
+			{
+				checkBox.BindingContext = model;
+			}
+
+			Assert.Empty(writes);
+			Assert.Equal(CheckBoxState.Indeterminate, model.CheckState);
+			Assert.True(checkBox.IsThreeState);
+			Assert.Equal(CheckBoxState.Indeterminate, checkBox.CheckState);
+			Assert.False(checkBox.IsChecked);
+		}
+
+		[Theory]
+		[InlineData(BindingMode.OneTime)]
+		[InlineData(BindingMode.OneWayToSource)]
+		public void EnablingThreeStateDoesNotReapplyNonReadingStateBinding(BindingMode mode)
+		{
+			var model = new SingleStateViewModel { State = CheckBoxState.Checked };
+			var checkBox = new CheckBox { IsChecked = true };
+			checkBox.SetBinding(CheckBox.CheckStateProperty,
+				new Binding(nameof(SingleStateViewModel.State), mode, source: model));
+			model.State = CheckBoxState.Indeterminate;
+			Assert.Equal(CheckBoxState.Checked, checkBox.CheckState);
+			var modelChanges = 0;
+			model.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == nameof(SingleStateViewModel.State))
+				{
+					modelChanges++;
+				}
+			};
+			var states = new List<CheckBoxState>();
+			checkBox.CheckStateChanged += (_, e) => states.Add(e.Value);
+
+			checkBox.IsThreeState = true;
+
+			Assert.Equal(CheckBoxState.Checked, checkBox.CheckState);
+			Assert.True(checkBox.IsChecked);
+			Assert.Equal(CheckBoxState.Indeterminate, model.State);
+			Assert.Equal(0, modelChanges);
+			Assert.Empty(states);
+		}
+
+		[Fact]
+		public void NormalizedNativeWriteStillUpdatesStateBinding()
+		{
+			var model = new CheckBox { IsThreeState = true, CheckState = CheckBoxState.Checked };
+			var checkBox = new CheckBox();
+			checkBox.SetBinding(CheckBox.CheckStateProperty,
+				new Binding(nameof(CheckBox.CheckState), BindingMode.TwoWay, source: model));
+
+			((ICheckBox2)checkBox).CheckState = CheckBoxState.Indeterminate;
+
+			Assert.Equal(CheckBoxState.Unchecked, checkBox.CheckState);
+			Assert.Equal(CheckBoxState.Unchecked, model.CheckState);
+		}
+
+		[Theory]
+		[InlineData(false, false)]
+		[InlineData(false, true)]
+		[InlineData(true, false)]
+		[InlineData(true, true)]
+		public void ReentrantProjectionResetPreservesBooleanEventsAndCommands(bool threeState, bool enumWrite)
+		{
+			var checkBox = new CheckBox { IsThreeState = threeState };
+			var states = new List<CheckBoxState>();
+			var checkedValues = new List<bool>();
+			var commands = new List<bool>();
+			checkBox.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == nameof(CheckBox.IsChecked) && checkBox.IsChecked)
+				{
+					checkBox.IsChecked = false;
+				}
+			};
+			checkBox.CheckStateChanged += (_, e) => states.Add(e.Value);
+			checkBox.CheckedChanged += (_, e) => checkedValues.Add(e.Value);
+			checkBox.Command = new Command(() => commands.Add(checkBox.IsChecked));
+
+			if (enumWrite)
+			{
+				((ICheckBox2)checkBox).CheckState = CheckBoxState.Checked;
+			}
+			else
+			{
+				((ICheckBox)checkBox).IsChecked = true;
+			}
+
+			Assert.False(checkBox.IsChecked);
+			Assert.Equal(CheckBoxState.Unchecked, checkBox.CheckState);
+			Assert.Equal(new[] { CheckBoxState.Checked, CheckBoxState.Unchecked }, states);
+			Assert.Equal(new[] { true, false }, checkedValues);
+			Assert.Equal(new[] { true, false }, commands);
+		}
+
+		[Fact]
+		public void ClearingProjectedBooleanDoesNotClearIndeterminate()
+		{
+			var checkBox = new CheckBox { IsThreeState = true, CheckState = CheckBoxState.Indeterminate };
+			var changes = 0;
+			checkBox.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName is nameof(CheckBox.IsChecked) or nameof(CheckBox.CheckState))
+				{
+					changes++;
+				}
+			};
+
+			checkBox.ClearValue(CheckBox.IsCheckedProperty);
+
+			Assert.Equal(CheckBoxState.Indeterminate, checkBox.CheckState);
+			Assert.False(checkBox.IsChecked);
+			Assert.Equal(0, changes);
+		}
+
+		[Fact]
+		public void ReentrantCheckBoxResetDoesNotInterruptEntryBinding()
+		{
+			var model = new Entry { Text = "initial" };
+			var entry = new Entry();
+			entry.SetBinding(Entry.TextProperty, new Binding(nameof(Entry.Text), BindingMode.TwoWay, source: model));
+			var checkBox = new CheckBox();
+			var events = new List<bool>();
+			checkBox.CheckedChanged += (_, e) => events.Add(e.Value);
+			checkBox.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName != nameof(CheckBox.IsChecked))
+				{
+					return;
+				}
+				entry.Text = checkBox.IsChecked ? "checked" : "unchecked";
+				if (checkBox.IsChecked)
+				{
+					checkBox.IsChecked = false;
+				}
+			};
+
+			((ICheckBox2)checkBox).CheckState = CheckBoxState.Checked;
+
+			Assert.Equal(new[] { true, false }, events);
+			Assert.Equal("unchecked", model.Text);
+			model.Text = "source update";
+			Assert.Equal("source update", entry.Text);
+		}
+
+		[Theory]
+		[InlineData(false)]
+		[InlineData(true)]
+		public void ReentrantCounterpartResetUpdatesOriginalBindingAndNotification(bool stateWrite)
+		{
+			var checkBox = new CheckBox();
+			var model = new CheckBox();
+			var sourceProperty = stateWrite ? CheckBox.CheckStateProperty : CheckBox.IsCheckedProperty;
+			var counterpartName = stateWrite ? nameof(CheckBox.IsChecked) : nameof(CheckBox.CheckState);
+			checkBox.SetBinding(sourceProperty,
+				new Binding(sourceProperty.PropertyName, BindingMode.TwoWay, source: model));
+			var values = new List<object>();
+			checkBox.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == sourceProperty.PropertyName)
+				{
+					values.Add(checkBox.GetValue(sourceProperty));
+				}
+				if (e.PropertyName == counterpartName && checkBox.IsChecked)
+				{
+					if (stateWrite)
+					{
+						checkBox.IsChecked = false;
+					}
+					else
+					{
+						checkBox.CheckState = CheckBoxState.Unchecked;
+					}
+				}
+			};
+
+			if (stateWrite)
+			{
+				checkBox.CheckState = CheckBoxState.Checked;
+			}
+			else
+			{
+				checkBox.IsChecked = true;
+			}
+
+			Assert.False(checkBox.IsChecked);
+			Assert.False(model.IsChecked);
+			Assert.Equal(CheckBoxState.Unchecked, model.CheckState);
+			Assert.Equal(stateWrite
+				? new object[] { CheckBoxState.Checked, CheckBoxState.Unchecked }
+				: new object[] { true, false }, values);
+		}
+
+		[Theory]
+		[InlineData(false)]
+		[InlineData(true)]
+		public void DisablingThreeStateDoesNotRestoreQueuedMixedRequest(bool stateWrite)
+		{
+			var checkBox = new CheckBox { IsThreeState = true };
+			var states = new List<CheckBoxState>();
+			checkBox.CheckStateChanged += (_, e) => states.Add(e.Value);
+			checkBox.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == nameof(CheckBox.IsChecked) && checkBox.IsChecked)
+				{
+					checkBox.CheckState = CheckBoxState.Indeterminate;
+					checkBox.IsThreeState = false;
+					checkBox.IsThreeState = true;
+				}
+			};
+
+			if (stateWrite)
+			{
+				checkBox.CheckState = CheckBoxState.Checked;
+			}
+			else
+			{
+				checkBox.IsChecked = true;
+			}
+
+			Assert.True(checkBox.IsThreeState);
+			Assert.False(checkBox.IsChecked);
+			Assert.Equal(CheckBoxState.Unchecked, checkBox.CheckState);
+			Assert.Equal(new[] { CheckBoxState.Checked, CheckBoxState.Unchecked }, states);
+		}
+
+		[Fact]
+		public void ClearingBooleanProjectionAllowsLaterStateStyle()
+		{
+			var checkBox = new CheckBox { IsChecked = true };
+			checkBox.ClearValue(CheckBox.IsCheckedProperty);
+			checkBox.Style = new Style(typeof(CheckBox))
+			{
+				Setters = { new Setter { Property = CheckBox.CheckStateProperty, Value = CheckBoxState.Checked } }
+			};
+
+			Assert.Equal(CheckBoxState.Checked, checkBox.CheckState);
+			Assert.True(checkBox.IsChecked);
+		}
+
+		[Fact]
+		public void LocalIndeterminateWinsOverBooleanStyleAndClearingRevealsStyle()
+		{
+			var checkBox = new CheckBox { IsThreeState = true, CheckState = CheckBoxState.Indeterminate };
+			checkBox.Style = new Style(typeof(CheckBox))
+			{
+				Setters = { new Setter { Property = CheckBox.IsCheckedProperty, Value = true } }
+			};
+			Assert.Equal(CheckBoxState.Indeterminate, checkBox.CheckState);
+			Assert.False(checkBox.IsChecked);
+
+			checkBox.ClearValue(CheckBox.CheckStateProperty);
+
+			Assert.Equal(CheckBoxState.Checked, checkBox.CheckState);
+			Assert.True(checkBox.IsChecked);
+		}
+
+		[Fact]
+		public void IgnoredStyleDoesNotRemoveNativeProjectionOverLocalBoolean()
+		{
+			var checkBox = new CheckBox { IsThreeState = true, IsChecked = true };
+			((ICheckBox2)checkBox).CheckState = CheckBoxState.Indeterminate;
+			checkBox.Style = new Style(typeof(CheckBox))
+			{
+				Setters = { new Setter { Property = CheckBox.IsCheckedProperty, Value = false } }
+			};
+
+			Assert.Equal(CheckBoxState.Indeterminate, checkBox.CheckState);
+			Assert.False(checkBox.IsChecked);
+			checkBox.ClearValue(CheckBox.CheckStateProperty);
+			Assert.Equal(CheckBoxState.Checked, checkBox.CheckState);
+			Assert.True(checkBox.IsChecked);
+		}
+
+		[Fact]
+		public void DisablingThreeStateAlsoNormalizesSavedProjectionFallback()
+		{
+			var checkBox = new CheckBox { IsThreeState = true, CheckState = CheckBoxState.Indeterminate };
+			checkBox.IsChecked = true;
+			checkBox.IsThreeState = false;
+			checkBox.IsThreeState = true;
+			checkBox.ClearValue(CheckBox.IsCheckedProperty);
+
+			Assert.Equal(CheckBoxState.Unchecked, checkBox.CheckState);
+			Assert.False(checkBox.IsChecked);
+		}
+
+		[Fact]
+		public void ReentrantClearFromIndeterminatePublishesUncheckedOnce()
+		{
+			var checkBox = new CheckBox { IsThreeState = true, CheckState = CheckBoxState.Indeterminate };
+			var values = new List<CheckBoxState>();
+			var states = new List<CheckBoxState>();
+			checkBox.PropertyChanging += (_, e) =>
+			{
+				if (e.PropertyName == nameof(CheckBox.CheckState))
+					checkBox.IsThreeState = false;
+			};
+			checkBox.PropertyChanged += (_, e) =>
+			{
+				if (e.PropertyName == nameof(CheckBox.CheckState))
+					values.Add(checkBox.CheckState);
+			};
+			checkBox.CheckStateChanged += (_, e) => states.Add(e.Value);
+
+			checkBox.ClearValue(CheckBox.CheckStateProperty);
+
+			Assert.False(checkBox.IsThreeState);
+			Assert.Equal(new[] { CheckBoxState.Unchecked }, values);
+			Assert.Equal(new[] { CheckBoxState.Unchecked }, states);
 		}
 
 		[Theory]
@@ -491,6 +883,7 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			Assert.Equal("Indeterminate", data.Text);
 			await drop.SendDrop(new DropEventArgs(new DataPackageView(data)));
 			Assert.Equal(threeState ? CheckBoxState.Indeterminate : CheckBoxState.Unchecked, target.CheckState);
+			Assert.Equal(CheckBoxState.Indeterminate, source.CheckState);
 		}
 
 		[Theory]
@@ -580,12 +973,25 @@ namespace Microsoft.Maui.Controls.Core.UnitTests
 			groups[0].States.Add(new VisualState { Name = CheckBox.IsIndeterminateVisualState });
 			var checkBox = new CheckBox { IsThreeState = true };
 			VisualStateManager.SetVisualStateGroups(checkBox, groups);
+			checkBox.CheckState = CheckBoxState.Checked;
+			Assert.Equal(CheckBox.IsCheckedVisualState, groups[0].CurrentState.Name);
+			checkBox.CheckState = CheckBoxState.Indeterminate;
+			Assert.Equal(CheckBox.IsIndeterminateVisualState, groups[0].CurrentState.Name);
+			checkBox.CheckState = CheckBoxState.Checked;
+			Assert.Equal(CheckBox.IsCheckedVisualState, groups[0].CurrentState.Name);
 			checkBox.CheckState = CheckBoxState.Indeterminate;
 			Assert.Equal(CheckBox.IsIndeterminateVisualState, groups[0].CurrentState.Name);
 			checkBox.IsEnabled = false;
 			Assert.Equal(DisabledStateName, groups[0].CurrentState.Name);
+			checkBox.CheckState = CheckBoxState.Checked;
+			Assert.Equal(DisabledStateName, groups[0].CurrentState.Name);
+			checkBox.CheckState = CheckBoxState.Indeterminate;
+			Assert.Equal(DisabledStateName, groups[0].CurrentState.Name);
 			checkBox.IsEnabled = true;
 			Assert.Equal(CheckBox.IsIndeterminateVisualState, groups[0].CurrentState.Name);
+			checkBox.CheckState = CheckBoxState.Unchecked;
+			Assert.Equal(NormalStateName, groups[0].CurrentState.Name);
+			checkBox.CheckState = CheckBoxState.Indeterminate;
 			checkBox.IsThreeState = false;
 			Assert.Equal(NormalStateName, groups[0].CurrentState.Name);
 		}

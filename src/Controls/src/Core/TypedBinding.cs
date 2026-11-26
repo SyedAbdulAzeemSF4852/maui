@@ -399,7 +399,9 @@ namespace Microsoft.Maui.Controls.Internals
 					BindingDiagnostics.SendBindingFailure(this, sourceObject, target, property, "Binding", BindingExpression.CannotConvertTypeErrorMessage, value, property.ReturnType);
 					return;
 				}
-				target.SetValueCore(property, value, SetValueFlags.ClearDynamicResource, BindableObject.SetValuePrivateFlags.Default | BindableObject.SetValuePrivateFlags.Converted, specificity);
+				target.SetValueCore(property, value, SetValueFlags.ClearDynamicResource,
+					BindableObject.SetValuePrivateFlags.Converted |
+					(target is CheckBox && CheckBox.IsStateProperty(property) ? BindableObject.SetValuePrivateFlags.FromBinding : BindableObject.SetValuePrivateFlags.None), specificity);
 				return;
 			}
 

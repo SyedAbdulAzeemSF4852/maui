@@ -131,7 +131,8 @@ namespace Microsoft.Maui.Controls
 		/// <remarks>
 		/// Indeterminate is normalized to unchecked while <see cref="IsThreeState"/> is false.
 		/// The normalized request is not remembered or restored when three-state support is enabled later.
-		/// Enable <see cref="IsThreeState"/> before assigning indeterminate.
+		/// Enable <see cref="IsThreeState"/> before assigning indeterminate. Enabling the flag
+		/// re-reads an existing one-way or two-way state binding from its current source.
 		/// Bind this property, rather than both state properties, when a view model needs a single source of truth.
 		/// </remarks>
 		public CheckBoxState CheckState
@@ -177,31 +178,45 @@ namespace Microsoft.Maui.Controls
 			var specificity = GetContext(source)?.Values.GetSpecificity() ?? SetterSpecificity.DefaultValue;
 			if (source == IsCheckedProperty)
 			{
-				SetValueFromRelatedProperty(CheckStateProperty,
-					(bool)value ? CheckBoxState.Checked : CheckBoxState.Unchecked, specificity);
+				SetStateProjection(CheckStateProperty,
+					(bool)value ? CheckBoxState.Checked : CheckBoxState.Unchecked, specificity, source);
 			}
 			else
 			{
-				SetValueFromRelatedProperty(IsCheckedProperty,
-					BooleanBoxes.Box((CheckBoxState)value == CheckBoxState.Checked), specificity);
+				SetStateProjection(IsCheckedProperty,
+					BooleanBoxes.Box((CheckBoxState)value == CheckBoxState.Checked), specificity, source);
 			}
 		}
 
 		void UpdateThreeState()
 		{
-			if (IsThreeState || GetContext(CheckStateProperty) is not { } context)
-				return;
-
-			if (context.DelayedSetters is { } delayedSetters)
+			if (GetContext(CheckStateProperty) is not { } context)
 			{
-				var count = delayedSetters.Count;
-				for (var i = 0; i < count; i++)
+				return;
+			}
+
+			if (IsThreeState)
+			{
+				if (context.Bindings.GetValue() is { } binding &&
+					binding.GetRealizedMode(CheckStateProperty) is BindingMode.OneWay or BindingMode.TwoWay)
 				{
-					var setter = delayedSetters.Dequeue();
-					delayedSetters.Enqueue((CheckBoxState)setter.Value == CheckBoxState.Indeterminate
-						? new SetValueArgs(setter.Property, setter.Context, CheckBoxState.Unchecked,
-							setter.CurrentlyApplying, setter.Attributes, setter.Specificity)
-						: setter);
+					binding.Apply(false);
+				}
+				return;
+			}
+
+			if (_enumProjection is { Source: not null, HadOriginal: true, OriginalValue: CheckBoxState.Indeterminate })
+			{
+				_enumProjection.OriginalValue = CheckBoxState.Unchecked;
+			}
+			if (_stateWrites != null)
+			{
+				foreach (var setter in _stateWrites)
+				{
+					if (!setter.IsClear && setter.Property == CheckStateProperty && Equals(setter.Value, CheckBoxState.Indeterminate))
+					{
+						setter.Value = CheckBoxState.Unchecked;
+					}
 				}
 			}
 
@@ -224,8 +239,10 @@ namespace Microsoft.Maui.Controls
 		private protected override void OnBindablePropertySet(BindableProperty property, object original, object value, bool changed, bool willFirePropertyChanged)
 		{
 			base.OnBindablePropertySet(property, original, value, changed, willFirePropertyChanged);
-			if (property == IsCheckedProperty || property == CheckStateProperty || property == IsThreeStateProperty)
+			if (IsStateProperty(property) || (property == IsThreeStateProperty && !_stateTransaction))
+			{
 				CommitState();
+			}
 		}
 
 		void CommitState()
